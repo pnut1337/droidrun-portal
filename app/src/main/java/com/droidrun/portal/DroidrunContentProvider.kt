@@ -385,14 +385,14 @@ class DroidrunContentProvider : ContentProvider() {
     private fun createSuccessResponse(data: String): String {
         return JSONObject().apply {
             put("status", "success")
-            put("message", data)
+            put("data", data)
         }.toString()
     }
 
     private fun createErrorResponse(error: String): String {
         return JSONObject().apply {
             put("status", "error")
-            put("message", error)
+            put("error", error)
         }.toString()
     }
 
