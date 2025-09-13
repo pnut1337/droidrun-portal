@@ -227,63 +227,63 @@ class DroidrunContentProvider : ContentProvider() {
         }
     }
 
-    private fun performTextInput(values: ContentValues): String {
-        val accessibilityService = DroidrunAccessibilityService.getInstance()
-            ?: return "error: Accessibility service not available"
-        // Get the hex-encoded text
-        val hexText = values.getAsString("hex_text")
-            ?: return "error: No hex_text provided"
+    // private fun performTextInput(values: ContentValues): String {
+    //     val accessibilityService = DroidrunAccessibilityService.getInstance()
+    //         ?: return "error: Accessibility service not available"
+    //     // Get the hex-encoded text
+    //     val hexText = values.getAsString("hex_text")
+    //         ?: return "error: No hex_text provided"
 
-        // Check if we should append (default is false = replace)
-        val append = values.getAsBoolean("append") ?: false
+    //     // Check if we should append (default is false = replace)
+    //     val append = values.getAsBoolean("append") ?: false
 
-        // Decode hex to actual text
-        val text = try {
-            hexText.chunked(2).map { it.toInt(16).toChar() }.joinToString("")
-        } catch (e: Exception) {
-            return "error: Invalid hex encoding: ${e.message}"
-        }
+    //     // Decode hex to actual text
+    //     val text = try {
+    //         hexText.chunked(2).map { it.toInt(16).toChar() }.joinToString("")
+    //     } catch (e: Exception) {
+    //         return "error: Invalid hex encoding: ${e.message}"
+    //     }
 
-        // Find the currently focused element
-        val focusedNode = accessibilityService.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            ?: return "error: No focused input element found"
+    //     // Find the currently focused element
+    //     val focusedNode = accessibilityService.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+    //         ?: return "error: No focused input element found"
 
-        return try {
-            val finalText = if (append) {
-                // Get existing text and append to it
-                val existingText = focusedNode.text?.toString() ?: ""
-                existingText + text
-            } else {
-                // Just use the new text (replace)
-                text
-            }
+    //     return try {
+    //         val finalText = if (append) {
+    //             // Get existing text and append to it
+    //             val existingText = focusedNode.text?.toString() ?: ""
+    //             existingText + text
+    //         } else {
+    //             // Just use the new text (replace)
+    //             text
+    //         }
 
-            // Set the text using ACTION_SET_TEXT
-            val arguments = Bundle().apply {
-                putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, finalText)
-            }
-            val result = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
-            focusedNode.recycle()
+    //         // Set the text using ACTION_SET_TEXT
+    //         val arguments = Bundle().apply {
+    //             putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, finalText)
+    //         }
+    //         val result = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
+    //         focusedNode.recycle()
             
-            if (result) {
-                val mode = if (append) "appended" else "set"
-                "success: Text $mode - '$text'"
-            } else {
-                "error: Text input failed"
-            }
-        } catch (e: Exception) {
-            focusedNode.recycle()
-            "error: Text input exception: ${e.message}"
-        }
-    }
+    //         if (result) {
+    //             val mode = if (append) "appended" else "set"
+    //             "success: Text $mode - '$text'"
+    //         } else {
+    //             "error: Text input failed"
+    //         }
+    //     } catch (e: Exception) {
+    //         focusedNode.recycle()
+    //         "error: Text input exception: ${e.message}"
+    //     }
+    // }
 
     private fun performKeyboardInputBase64(values: ContentValues): String {
         val base64Text = values.getAsString("base64_text") ?: return "error: no text provided"
-        val append = values.getAsBoolean("append") ?: false
+        val clear = values.getAsBoolean("clear") ?: true
     
         return if (DroidrunKeyboardIME.getInstance() != null) {
-            val ok = DroidrunKeyboardIME.getInstance()!!.inputB64Text(base64Text, append)
-            if (ok) "success: input done (append=$append)" else "error: input failed"
+            val ok = DroidrunKeyboardIME.getInstance()!!.inputB64Text(base64Text, clear)
+            if (ok) "success: input done (clear=$clear)" else "error: input failed"
         } else {
             "error: IME not active"
         }

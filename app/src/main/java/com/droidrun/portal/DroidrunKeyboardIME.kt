@@ -27,46 +27,30 @@ class DroidrunKeyboardIME : InputMethodService() {
         Log.d(TAG, "DroidrunKeyboardIME: onCreate() called")
     }
 
-    fun inputText(text: String): Boolean {
-        return try {
-            val ic = currentInputConnection
-            if (ic != null) {
-                ic.commitText(text, 1)
-                Log.d(TAG, "Direct text input successful: $text")
-                true
-            } else {
-                Log.w(TAG, "No input connection available for direct input")
-                false
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error in direct text input", e)
-            false
-        }
-    }
 
     /**
      * Direct method to input text from Base64 without using broadcasts
      */
-    fun inputB64Text(base64Text: String, append: Boolean = false): Boolean {
+    fun inputB64Text(base64Text: String, clear: Boolean = true): Boolean {
         return try {
             val decoded = Base64.decode(base64Text, Base64.DEFAULT)
             val text = String(decoded, Charsets.UTF_8)
-            inputText(text, append)
+            inputText(text, clear)
         } catch (e: Exception) {
             Log.e(TAG, "Error decoding base64 for direct input", e)
             false
         }
     }
     
-    fun inputText(text: String, append: Boolean = false): Boolean {
+    fun inputText(text: String, clear: Boolean = true): Boolean {
         return try {
             val ic = currentInputConnection
             if (ic != null) {
-                if (!append) {
+                if (clear) {
                     clearText()
                 }
-                ic.commitText(text, 0)
-                Log.d(TAG, "Text input successful: $text (append=$append)")
+                ic.commitText(text, 1)
+                Log.d(TAG, "Text input successful: $text (clear=$clear)")
                 true
             } else {
                 Log.w(TAG, "No input connection available for text input")
