@@ -376,11 +376,12 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
 
      fun getPhoneState(): PhoneState {
         val focusedNode = findFocus(AccessibilityNodeInfo.FOCUS_INPUT) ?: findFocus(AccessibilityNodeInfo.FOCUS_ACCESSIBILITY)
+        val isEditable = focusedNode?.isEditable ?: false
         val keyboardVisible = detectKeyboardVisibility()
         val currentPackage = rootInActiveWindow?.packageName?.toString()
         val appName = getAppName(currentPackage)
 
-        return PhoneState(focusedNode, keyboardVisible, currentPackage, appName)
+        return PhoneState(focusedNode, keyboardVisible, currentPackage, appName, isEditable)
     }
 
     private fun detectKeyboardVisibility(): Boolean {

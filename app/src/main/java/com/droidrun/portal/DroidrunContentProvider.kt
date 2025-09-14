@@ -193,12 +193,14 @@ class DroidrunContentProvider : ContentProvider() {
             put("currentApp", phoneState.appName)
             put("packageName", phoneState.packageName)
             put("keyboardVisible", phoneState.keyboardVisible)
+            put("isEditable", phoneState.isEditable)
             put("focusedElement", JSONObject().apply {
                 val rect = Rect()
                 put("text", phoneState.focusedElement?.text)
                 put("className", phoneState.focusedElement?.className)
                 put("resourceId", phoneState.focusedElement?.viewIdResourceName ?: "")
-            })
+            }
+            )
         }
 
     private fun getCombinedState(): String {
