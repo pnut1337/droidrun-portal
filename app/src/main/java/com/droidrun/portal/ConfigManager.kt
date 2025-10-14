@@ -13,6 +13,7 @@ class ConfigManager private constructor(private val context: Context) {
         private const val PREFS_NAME = "droidrun_config"
         private const val KEY_OVERLAY_VISIBLE = "overlay_visible"
         private const val KEY_OVERLAY_OFFSET = "overlay_offset"
+        private const val KEY_AUTO_OFFSET_ENABLED = "auto_offset_enabled"
         private const val KEY_SOCKET_SERVER_ENABLED = "socket_server_enabled"
         private const val KEY_SOCKET_SERVER_PORT = "socket_server_port"
         private const val DEFAULT_OFFSET = 0
@@ -43,7 +44,14 @@ class ConfigManager private constructor(private val context: Context) {
         set(value) {
             sharedPrefs.edit().putInt(KEY_OVERLAY_OFFSET, value).apply()
         }
-    
+
+    // Auto offset enabled
+    var autoOffsetEnabled: Boolean
+        get() = sharedPrefs.getBoolean(KEY_AUTO_OFFSET_ENABLED, true)
+        set(value) {
+            sharedPrefs.edit().putBoolean(KEY_AUTO_OFFSET_ENABLED, value).apply()
+        }
+
     // Socket server enabled
     var socketServerEnabled: Boolean
         get() = sharedPrefs.getBoolean(KEY_SOCKET_SERVER_ENABLED, true)
@@ -85,7 +93,7 @@ class ConfigManager private constructor(private val context: Context) {
         overlayOffset = offset
         listeners.forEach { it.onOverlayOffsetChanged(offset) }
     }
-    
+
     fun setSocketServerEnabledWithNotification(enabled: Boolean) {
         socketServerEnabled = enabled
         listeners.forEach { it.onSocketServerEnabledChanged(enabled) }
@@ -98,8 +106,9 @@ class ConfigManager private constructor(private val context: Context) {
     
     // Bulk configuration update
     fun updateConfiguration(
-        overlayVisible: Boolean? = null, 
+        overlayVisible: Boolean? = null,
         overlayOffset: Int? = null,
+        autoOffsetEnabled: Boolean? = null,
         socketServerEnabled: Boolean? = null,
         socketServerPort: Int? = null
     ) {
@@ -115,7 +124,12 @@ class ConfigManager private constructor(private val context: Context) {
             editor.putInt(KEY_OVERLAY_OFFSET, it)
             hasChanges = true
         }
-        
+
+        autoOffsetEnabled?.let {
+            editor.putBoolean(KEY_AUTO_OFFSET_ENABLED, it)
+            hasChanges = true
+        }
+
         socketServerEnabled?.let {
             editor.putBoolean(KEY_SOCKET_SERVER_ENABLED, it)
             hasChanges = true
@@ -141,14 +155,16 @@ class ConfigManager private constructor(private val context: Context) {
     data class Configuration(
         val overlayVisible: Boolean,
         val overlayOffset: Int,
+        val autoOffsetEnabled: Boolean,
         val socketServerEnabled: Boolean,
         val socketServerPort: Int
     )
-    
+
     fun getCurrentConfiguration(): Configuration {
         return Configuration(
             overlayVisible = overlayVisible,
             overlayOffset = overlayOffset,
+            autoOffsetEnabled = autoOffsetEnabled,
             socketServerEnabled = socketServerEnabled,
             socketServerPort = socketServerPort
         )

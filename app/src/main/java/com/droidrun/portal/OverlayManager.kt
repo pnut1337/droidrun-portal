@@ -15,6 +15,8 @@ import android.widget.FrameLayout
 import android.content.Intent
 import android.view.View
 import java.util.concurrent.atomic.AtomicBoolean
+import android.os.Build
+import android.view.WindowInsets
 
 class OverlayManager(private val context: Context) {
     private val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as WindowManager
@@ -33,7 +35,12 @@ class OverlayManager(private val context: Context) {
     companion object {
         private const val TAG = "TOPVIEW_OVERLAY"
         private const val OVERLAP_THRESHOLD = 0.5f // Lower overlap threshold for matching
-        
+        private const val FALLBACK_OFFSET = 0 // Safe default if detection fails
+
+        // Reasonable bounds for status bar height (in pixels)
+        private const val MIN_REASONABLE_OFFSET = -200  // Negative because we shift up
+        private const val MAX_REASONABLE_OFFSET = -10   // Minimum status bar size
+
         // Define a color scheme with 8 visually distinct colors
         private val COLOR_SCHEME = arrayOf(
             Color.rgb(0, 122, 255),    // Blue
@@ -84,6 +91,58 @@ class OverlayManager(private val context: Context) {
     // Add getter for the current offset value
     fun getPositionOffsetY(): Int {
         return positionOffsetY
+    }
+
+    /**
+     * Automatically calculate the status bar height offset.
+     * Returns a negative value (to shift overlay upward).
+     * Uses multiple detection methods with fallbacks for maximum compatibility.
+     */
+    fun calculateAutoOffset(): Int {
+        return try {
+            val offset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                getStatusBarHeightFromInsets()
+            } else {
+                getStatusBarHeightFromResources()
+            }
+            if (offset in MIN_REASONABLE_OFFSET..MAX_REASONABLE_OFFSET) offset else FALLBACK_OFFSET
+        } catch (e: Exception) {
+            Log.e(TAG, "Error calculating auto offset, using fallback: ${e.message}", e)
+            FALLBACK_OFFSET
+        }
+    }
+
+    private fun getStatusBarHeightFromInsets(): Int {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val metrics = windowManager.currentWindowMetrics
+                val insets = metrics.windowInsets.getInsetsIgnoringVisibility(
+                    WindowInsets.Type.systemBars()
+                )
+                -insets.top  // Negative to shift upward
+            } else {
+                getStatusBarHeightFromResources()  // Fallback
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting insets-based offset: ${e.message}", e)
+            getStatusBarHeightFromResources()  // Fallback to resource method
+        }
+    }
+
+    private fun getStatusBarHeightFromResources(): Int {
+        return try {
+            val resourceId = context.resources.getIdentifier("status_bar_height", "dimen", "android")
+            if (resourceId > 0) {
+                val height = context.resources.getDimensionPixelSize(resourceId)
+                -height  // Negative to shift upward
+            } else {
+                Log.w(TAG, "Status bar height resource not found")
+                FALLBACK_OFFSET
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting resource-based offset: ${e.message}", e)
+            FALLBACK_OFFSET
+        }
     }
 
     fun setOnReadyCallback(callback: () -> Unit) {

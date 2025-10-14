@@ -30,6 +30,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var responseText: TextView
     private lateinit var versionText: TextView
     private lateinit var toggleOverlay: SwitchMaterial
+    private lateinit var toggleAutoOffset: SwitchMaterial
     private lateinit var fetchButton: MaterialButton
     private lateinit var offsetSlider: SeekBar
     private lateinit var offsetInput: TextInputEditText
@@ -55,6 +56,8 @@ class MainActivity : AppCompatActivity() {
         private const val MIN_OFFSET = -256
         private const val MAX_OFFSET = 256
         private const val SLIDER_RANGE = MAX_OFFSET - MIN_OFFSET
+        private const val CONTROL_ENABLED_ALPHA = 1.0f
+        private const val CONTROL_DISABLED_ALPHA = 0.5f
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,6 +70,7 @@ class MainActivity : AppCompatActivity() {
         versionText = findViewById(R.id.version_text)
         fetchButton = findViewById(R.id.fetch_button)
         toggleOverlay = findViewById(R.id.toggle_overlay)
+        toggleAutoOffset = findViewById(R.id.toggle_auto_offset)
         offsetSlider = findViewById(R.id.offset_slider)
         offsetInput = findViewById(R.id.offset_input)
         offsetInputLayout = findViewById(R.id.offset_input_layout)
@@ -98,7 +102,11 @@ class MainActivity : AppCompatActivity() {
         toggleOverlay.setOnCheckedChangeListener { _, isChecked ->
             toggleOverlayVisibility(isChecked)
         }
-        
+
+        toggleAutoOffset.setOnCheckedChangeListener { _, isChecked ->
+            toggleAutoOffset(isChecked)
+        }
+
         // Setup accessibility status container
         accessibilityStatusContainer.setOnClickListener {
             openAccessibilitySettings()
@@ -123,12 +131,25 @@ class MainActivity : AppCompatActivity() {
         if (accessibilityService != null) {
             // Sync overlay toggle
             toggleOverlay.isChecked = accessibilityService.isOverlayVisible()
-            
-            // Sync offset controls
-            val currentOffset = accessibilityService.getOverlayOffset()
-            updateOffsetSlider(currentOffset)
-            updateOffsetInputField(currentOffset)
-            
+
+            // Sync auto offset toggle
+            val autoOffsetEnabled = accessibilityService.isAutoOffsetEnabled()
+            toggleAutoOffset.isChecked = autoOffsetEnabled
+
+            // Sync offset controls - show actual applied offset
+            val displayOffset = if (autoOffsetEnabled) {
+                // Show the actual calculated auto-offset
+                accessibilityService.getCurrentAppliedOffset()
+            } else {
+                // Show the saved manual offset
+                accessibilityService.getOverlayOffset()
+            }
+            updateOffsetSlider(displayOffset)
+            updateOffsetInputField(displayOffset)
+
+            // Disable manual offset controls if auto-offset is enabled
+            updateOffsetControlsEnabled(!autoOffsetEnabled)
+
             statusText.text = "Connected to accessibility service"
         } else {
             statusText.text = "Accessibility service not available"
@@ -353,7 +374,46 @@ class MainActivity : AppCompatActivity() {
             Log.e("DROIDRUN_MAIN", "Error toggling overlay: ${e.message}")
         }
     }
-    
+
+    private fun toggleAutoOffset(enabled: Boolean) {
+        try {
+            val accessibilityService = DroidrunAccessibilityService.getInstance()
+            if (accessibilityService == null) {
+                statusText.text = "Accessibility service not available"
+                return
+            }
+
+            if (!accessibilityService.setAutoOffsetEnabled(enabled)) {
+                statusText.text = "Failed to toggle auto-offset"
+                return
+            }
+
+            // Disable/enable manual offset controls based on auto-offset state
+            updateOffsetControlsEnabled(!enabled)
+
+            // Display the current applied offset (doesn't reset when disabling)
+            mainHandler.postDelayed({
+                val displayOffset = accessibilityService.getCurrentAppliedOffset()
+                updateOffsetSlider(displayOffset)
+                updateOffsetInputField(displayOffset)
+                statusText.text = "Auto-offset ${if (enabled) "enabled" else "disabled"} (offset: $displayOffset)"
+            }, 100) // Small delay to ensure offset is calculated and applied
+        } catch (e: Exception) {
+            statusText.text = "Error changing auto-offset: ${e.message}"
+            Log.e("DROIDRUN_MAIN", "Error toggling auto-offset: ${e.message}")
+        }
+    }
+
+    private fun updateOffsetControlsEnabled(enabled: Boolean) {
+        offsetSlider.isEnabled = enabled
+        offsetInput.isEnabled = enabled
+        offsetInputLayout.isEnabled = enabled
+
+        // Visual feedback: reduce alpha when disabled
+        val alpha = if (enabled) CONTROL_ENABLED_ALPHA else CONTROL_DISABLED_ALPHA
+        offsetSlider.alpha = alpha
+        offsetInput.alpha = alpha
+    }
 
     private fun fetchPhoneStateData() {
         try {

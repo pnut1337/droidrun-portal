@@ -219,8 +219,15 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                 } else {
                     overlayManager.hideOverlay()
                 }
-                overlayManager.setPositionOffsetY(config.overlayOffset)
-                Log.d(TAG, "Applied configuration: overlayVisible=${config.overlayVisible}, overlayOffset=${config.overlayOffset}")
+
+                // Apply offset: auto or manual
+                overlayManager.setPositionOffsetY(
+                    if (config.autoOffsetEnabled) {
+                        overlayManager.calculateAutoOffset()
+                    } else {
+                        config.overlayOffset
+                    }
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error applying configuration: ${e.message}", e)
             }
@@ -269,6 +276,34 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     }
 
     fun getOverlayOffset(): Int = configManager.overlayOffset
+
+    fun getCurrentAppliedOffset(): Int = overlayManager.getPositionOffsetY()
+
+    fun setAutoOffsetEnabled(enabled: Boolean): Boolean {
+        return try {
+            if (!enabled) {
+                // When disabling auto-offset, save the current applied offset
+                // as the manual offset so it persists across restarts
+                configManager.overlayOffset = overlayManager.getPositionOffsetY()
+            }
+
+            configManager.autoOffsetEnabled = enabled
+
+            // Only recalculate when enabling auto-offset
+            if (enabled) {
+                mainHandler.post {
+                    overlayManager.setPositionOffsetY(overlayManager.calculateAutoOffset())
+                }
+            }
+
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting auto offset: ${e.message}", e)
+            false
+        }
+    }
+
+    fun isAutoOffsetEnabled(): Boolean = configManager.autoOffsetEnabled
 
     fun getVisibleElements(): MutableList<ElementNode> {
         return getVisibleElementsInternal()
