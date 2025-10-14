@@ -298,6 +298,34 @@
                                 android:textSize="16sp" />
                         </com.google.android.material.card.MaterialCardView>
 
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginBottom="8dp"
+                            android:text="Offset Adjustment"
+                            android:textColor="@color/white"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <com.google.android.material.card.MaterialCardView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            app:cardCornerRadius="12dp"
+                            app:cardElevation="0dp"
+                            app:cardBackgroundColor="#2A332F"
+                            android:layout_marginBottom="16dp">
+
+                            <com.google.android.material.switchmaterial.SwitchMaterial
+                                android:id="@+id/toggle_auto_offset"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:checked="true"
+                                android:padding="16dp"
+                                android:text="Auto-Calculate Offset"
+                                android:textColor="@color/droidrun_text_secondary"
+                                android:textSize="16sp" />
+                        </com.google.android.material.card.MaterialCardView>
+
                     </LinearLayout>
 
                     <com.google.android.material.textfield.TextInputLayout

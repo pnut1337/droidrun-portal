@@ -219,8 +219,17 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                 } else {
                     overlayManager.hideOverlay()
                 }
-                overlayManager.setPositionOffsetY(config.overlayOffset)
-                Log.d(TAG, "Applied configuration: overlayVisible=${config.overlayVisible}, overlayOffset=${config.overlayOffset}")
+
+                // Apply offset: auto or manual
+                val offset = if (config.autoOffsetEnabled) {
+                    overlayManager.calculateAutoOffset()
+                } else {
+                    config.overlayOffset
+                }
+                overlayManager.setPositionOffsetY(offset)
+
+                Log.d(TAG, "Applied config: visible=${config.overlayVisible}, " +
+                          "offset=$offset (auto=${config.autoOffsetEnabled})")
             } catch (e: Exception) {
                 Log.e(TAG, "Error applying configuration: ${e.message}", e)
             }
@@ -269,6 +278,38 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     }
 
     fun getOverlayOffset(): Int = configManager.overlayOffset
+
+    fun getCurrentAppliedOffset(): Int = overlayManager.getPositionOffsetY()
+
+    fun setAutoOffsetEnabled(enabled: Boolean): Boolean {
+        return try {
+            if (!enabled) {
+                // When disabling auto-offset, save the current applied offset
+                // as the manual offset so it persists across restarts
+                val currentOffset = overlayManager.getPositionOffsetY()
+                configManager.overlayOffset = currentOffset
+                Log.d(TAG, "Saved auto-calculated offset as manual: $currentOffset")
+            }
+
+            configManager.autoOffsetEnabled = enabled
+
+            // Only recalculate when enabling auto-offset
+            if (enabled) {
+                mainHandler.post {
+                    val offset = overlayManager.calculateAutoOffset()
+                    overlayManager.setPositionOffsetY(offset)
+                }
+            }
+
+            Log.d(TAG, "Auto offset ${if (enabled) "enabled" else "disabled"}")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting auto offset: ${e.message}", e)
+            false
+        }
+    }
+
+    fun isAutoOffsetEnabled(): Boolean = configManager.autoOffsetEnabled
 
     fun getVisibleElements(): MutableList<ElementNode> {
         return getVisibleElementsInternal()
