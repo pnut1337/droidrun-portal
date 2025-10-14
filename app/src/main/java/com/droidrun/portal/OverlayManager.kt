@@ -99,24 +99,16 @@ class OverlayManager(private val context: Context) {
      * Uses multiple detection methods with fallbacks for maximum compatibility.
      */
     fun calculateAutoOffset(): Int {
-        try {
+        return try {
             val offset = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 getStatusBarHeightFromInsets()
             } else {
                 getStatusBarHeightFromResources()
             }
-
-            // Validate the offset is reasonable
-            if (offset in MIN_REASONABLE_OFFSET..MAX_REASONABLE_OFFSET) {
-                Log.d(TAG, "Auto-calculated offset: $offset")
-                return offset
-            } else {
-                Log.w(TAG, "Auto-calculated offset $offset is outside reasonable bounds, using fallback")
-                return FALLBACK_OFFSET
-            }
+            if (offset in MIN_REASONABLE_OFFSET..MAX_REASONABLE_OFFSET) offset else FALLBACK_OFFSET
         } catch (e: Exception) {
             Log.e(TAG, "Error calculating auto offset, using fallback: ${e.message}", e)
-            return FALLBACK_OFFSET
+            FALLBACK_OFFSET
         }
     }
 

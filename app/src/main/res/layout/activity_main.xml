@@ -312,7 +312,7 @@
                             android:layout_height="wrap_content"
                             app:cardCornerRadius="12dp"
                             app:cardElevation="0dp"
-                            app:cardBackgroundColor="#2A332F"
+                            app:cardBackgroundColor="@color/droidrun_card"
                             android:layout_marginBottom="16dp">
 
                             <com.google.android.material.switchmaterial.SwitchMaterial

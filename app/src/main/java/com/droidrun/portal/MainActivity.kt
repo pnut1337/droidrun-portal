@@ -56,6 +56,8 @@ class MainActivity : AppCompatActivity() {
         private const val MIN_OFFSET = -256
         private const val MAX_OFFSET = 256
         private const val SLIDER_RANGE = MAX_OFFSET - MIN_OFFSET
+        private const val CONTROL_ENABLED_ALPHA = 1.0f
+        private const val CONTROL_DISABLED_ALPHA = 0.5f
     }
     
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -376,29 +378,26 @@ class MainActivity : AppCompatActivity() {
     private fun toggleAutoOffset(enabled: Boolean) {
         try {
             val accessibilityService = DroidrunAccessibilityService.getInstance()
-            if (accessibilityService != null) {
-                val success = accessibilityService.setAutoOffsetEnabled(enabled)
-                if (success) {
-                    // Disable/enable manual offset controls based on auto-offset state
-                    updateOffsetControlsEnabled(!enabled)
-
-                    // Display the current applied offset (doesn't reset when disabling)
-                    mainHandler.postDelayed({
-                        val displayOffset = accessibilityService.getCurrentAppliedOffset()
-                        updateOffsetSlider(displayOffset)
-                        updateOffsetInputField(displayOffset)
-
-                        statusText.text = "Auto-offset ${if (enabled) "enabled" else "disabled"} (offset: $displayOffset)"
-                        Log.d("DROIDRUN_MAIN", "Auto-offset toggled to: $enabled, displaying offset: $displayOffset")
-                    }, 100) // Small delay to ensure offset is calculated and applied
-                } else {
-                    statusText.text = "Failed to toggle auto-offset"
-                    Log.e("DROIDRUN_MAIN", "Failed to toggle auto-offset")
-                }
-            } else {
+            if (accessibilityService == null) {
                 statusText.text = "Accessibility service not available"
-                Log.e("DROIDRUN_MAIN", "Accessibility service not available for auto-offset toggle")
+                return
             }
+
+            if (!accessibilityService.setAutoOffsetEnabled(enabled)) {
+                statusText.text = "Failed to toggle auto-offset"
+                return
+            }
+
+            // Disable/enable manual offset controls based on auto-offset state
+            updateOffsetControlsEnabled(!enabled)
+
+            // Display the current applied offset (doesn't reset when disabling)
+            mainHandler.postDelayed({
+                val displayOffset = accessibilityService.getCurrentAppliedOffset()
+                updateOffsetSlider(displayOffset)
+                updateOffsetInputField(displayOffset)
+                statusText.text = "Auto-offset ${if (enabled) "enabled" else "disabled"} (offset: $displayOffset)"
+            }, 100) // Small delay to ensure offset is calculated and applied
         } catch (e: Exception) {
             statusText.text = "Error changing auto-offset: ${e.message}"
             Log.e("DROIDRUN_MAIN", "Error toggling auto-offset: ${e.message}")
@@ -411,7 +410,7 @@ class MainActivity : AppCompatActivity() {
         offsetInputLayout.isEnabled = enabled
 
         // Visual feedback: reduce alpha when disabled
-        val alpha = if (enabled) 1.0f else 0.5f
+        val alpha = if (enabled) CONTROL_ENABLED_ALPHA else CONTROL_DISABLED_ALPHA
         offsetSlider.alpha = alpha
         offsetInput.alpha = alpha
     }

@@ -221,15 +221,13 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                 }
 
                 // Apply offset: auto or manual
-                val offset = if (config.autoOffsetEnabled) {
-                    overlayManager.calculateAutoOffset()
-                } else {
-                    config.overlayOffset
-                }
-                overlayManager.setPositionOffsetY(offset)
-
-                Log.d(TAG, "Applied config: visible=${config.overlayVisible}, " +
-                          "offset=$offset (auto=${config.autoOffsetEnabled})")
+                overlayManager.setPositionOffsetY(
+                    if (config.autoOffsetEnabled) {
+                        overlayManager.calculateAutoOffset()
+                    } else {
+                        config.overlayOffset
+                    }
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "Error applying configuration: ${e.message}", e)
             }
@@ -286,9 +284,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
             if (!enabled) {
                 // When disabling auto-offset, save the current applied offset
                 // as the manual offset so it persists across restarts
-                val currentOffset = overlayManager.getPositionOffsetY()
-                configManager.overlayOffset = currentOffset
-                Log.d(TAG, "Saved auto-calculated offset as manual: $currentOffset")
+                configManager.overlayOffset = overlayManager.getPositionOffsetY()
             }
 
             configManager.autoOffsetEnabled = enabled
@@ -296,12 +292,10 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
             // Only recalculate when enabling auto-offset
             if (enabled) {
                 mainHandler.post {
-                    val offset = overlayManager.calculateAutoOffset()
-                    overlayManager.setPositionOffsetY(offset)
+                    overlayManager.setPositionOffsetY(overlayManager.calculateAutoOffset())
                 }
             }
 
-            Log.d(TAG, "Auto offset ${if (enabled) "enabled" else "disabled"}")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error setting auto offset: ${e.message}", e)
