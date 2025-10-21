@@ -9,11 +9,11 @@
     <color name="white">#FFFFFFFF</color>
     
     <!-- Droidrun Portal brand colors - teal green palette -->
-    <color name="droidrun_primary">#00BFA5</color>
-    <color name="droidrun_primary_dark">#008F76</color>
-    <color name="droidrun_primary_light">#1DEDB8</color>
+    <color name="droidrun_primary">#00B777</color>
+    <color name="droidrun_primary_dark">#00744B</color>
+    <color name="droidrun_primary_light">#00744B</color>
     <color name="droidrun_accent">#1DEDB8</color>
-    <color name="droidrun_secondary">#00BFA5</color>
+    <color name="droidrun_secondary">#00B777</color>
     <color name="droidrun_green">#00E676</color>
     <color name="droidrun_orange">#FFB74D</color>
     <color name="droidrun_background">#1A1E1C</color>
@@ -33,4 +33,32 @@
     <color name="droidrun_success">#00E676</color>
     <color name="droidrun_warning">#FFD740</color>
     <color name="droidrun_disabled">#757575</color>
+    
+    <!-- UI background colors -->
+    <color name="background_primary">#191919</color>
+    <color name="background_secondary">#1a1a1a</color>
+    <color name="background_tertiary">#222222</color>
+    <color name="background_card">#2d2d2d</color>
+    <color name="background_input">#2F2F2F</color>
+    <color name="background_code">#232323</color>
+    
+    <!-- Alert and status colors -->
+    <color name="alert_error_bg">#BB4A5B</color>
+    <color name="alert_error_button">#C2717E</color>
+    <color name="status_success">#00B073</color>
+    <color name="status_error">#d32f2f</color>
+    
+    <!-- Text colors -->
+    <color name="text_white">#ffffff</color>
+    <color name="text_gray">#999999</color>
+    <color name="text_gray_light">#B3B3B3</color>
+    <color name="text_gray_dark">#666666</color>
+    <color name="text_hint">#BDBDBD</color>
+    
+    <!-- Border and stroke colors -->
+    <color name="stroke_gray">#555555</color>
+    
+    <!-- HTTP method colors -->
+    <color name="http_get">#4CAF50</color>
+    <color name="http_post">#2196F3</color>
 </resources>
