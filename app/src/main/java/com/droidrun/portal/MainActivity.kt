@@ -506,9 +506,14 @@ class MainActivity : AppCompatActivity() {
     private fun updateSocketServerPort(port: Int) {
         try {
             val configManager = ConfigManager.getInstance(this)
-            configManager.socketServerPort = port
+            configManager.setSocketServerPortWithNotification(port)
             
             updateAdbForwardCommand()
+            
+            // Give the server a moment to restart, then update the status
+            mainHandler.postDelayed({
+                updateSocketServerStatus()
+            }, 1000)
             
             Log.d("DROIDRUN_MAIN", "Socket server port updated: $port")
         } catch (e: Exception) {

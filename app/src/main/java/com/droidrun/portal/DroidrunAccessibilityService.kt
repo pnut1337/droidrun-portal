@@ -519,15 +519,20 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     }
 
     override fun onSocketServerPortChanged(port: Int) {
-        // Restart server with new port if it's running
+        // Restart server with new port if enabled
         socketServer?.let { server ->
-            if (server.isRunning()) {
+            val wasRunning = server.isRunning()
+            if (wasRunning) {
                 server.stop()
+            }
+            
+            // Start server on new port if it was running or if socket server is enabled
+            if (wasRunning || configManager.socketServerEnabled) {
                 val success = server.start(port)
                 if (success) {
-                    Log.i(TAG, "Socket server restarted on new port $port")
+                    Log.i(TAG, "Socket server started on new port $port")
                 } else {
-                    Log.e(TAG, "Failed to restart socket server on new port $port")
+                    Log.e(TAG, "Failed to start socket server on new port $port")
                 }
             }
         }
