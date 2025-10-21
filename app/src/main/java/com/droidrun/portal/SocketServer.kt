@@ -21,7 +21,7 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
 
     private var serverSocket: ServerSocket? = null
     private var isRunning = AtomicBoolean(false)
-    private val executorService: ExecutorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE)
+    private var executorService: ExecutorService? = null
     private var port: Int = DEFAULT_PORT
 
     fun start(port: Int = DEFAULT_PORT): Boolean {
@@ -34,13 +34,16 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
         Log.i(TAG, "Starting socket server on port $port...")
         
         return try {
+            // Create a new executor service for this server instance
+            executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE)
+            
             serverSocket = ServerSocket(port)
             isRunning.set(true)
             
             Log.i(TAG, "ServerSocket created successfully on port $port")
             
             // Start accepting connections in background
-            executorService.submit {
+            executorService?.submit {
                 Log.i(TAG, "Starting connection acceptor thread")
                 acceptConnections()
             }
@@ -50,6 +53,8 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start socket server on port $port", e)
             isRunning.set(false)
+            executorService?.shutdown()
+            executorService = null
             false
         }
     }
@@ -61,7 +66,8 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
         
         try {
             serverSocket?.close()
-            executorService.shutdown()
+            executorService?.shutdown()
+            executorService = null
             Log.i(TAG, "Socket server stopped")
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping socket server", e)
@@ -78,7 +84,7 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
                 Log.d(TAG, "Waiting for client connection...")
                 val clientSocket = serverSocket?.accept() ?: break
                 Log.i(TAG, "Client connected: ${clientSocket.remoteSocketAddress}")
-                executorService.submit {
+                executorService?.submit {
                     handleClient(clientSocket)
                 }
             } catch (e: SocketException) {
