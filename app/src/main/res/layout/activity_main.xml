@@ -1,207 +1,155 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout 
+<androidx.coordinatorlayout.widget.CoordinatorLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/droidrun_background"
+    android:background="@color/background_primary"
     tools:context=".MainActivity">
-
-    <com.google.android.material.appbar.AppBarLayout
-        android:id="@+id/appBarLayout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@android:color/transparent"
-        app:elevation="0dp">
-
-        <com.google.android.material.appbar.CollapsingToolbarLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:background="@android:color/transparent"
-            app:layout_scrollFlags="scroll|exitUntilCollapsed"
-            app:titleEnabled="false">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="24dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-                    
-                    <ImageView
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:src="@mipmap/ic_launcher"
-                        android:layout_marginEnd="16dp" />
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="@string/app_name"
-                            android:textSize="28sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white" />
-
-                        <TextView
-                            android:id="@+id/version_text"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Version loading..."
-                            android:textSize="14sp"
-                            android:textColor="@color/white"
-                            android:alpha="0.7" />
-                    </LinearLayout>
-                </LinearLayout>
-
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/header_card"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="24dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="0dp"
-                    app:cardBackgroundColor="@color/droidrun_primary">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
-
-                            <ImageView
-                                android:layout_width="24dp"
-                                android:layout_height="24dp"
-                                android:src="@android:drawable/ic_dialog_info"
-                                app:tint="@color/white" />
-
-                            <TextView
-                                android:id="@+id/status_text"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:layout_marginStart="16dp"
-                                android:text="Ready to fetch element data"
-                                android:textColor="@color/white"
-                                android:textSize="16sp" />
-                        </LinearLayout>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-                
-                <com.google.android.material.card.MaterialCardView
-                    android:id="@+id/accessibility_status_card"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    app:cardCornerRadius="16dp"
-                    app:cardElevation="4dp"
-                    app:strokeWidth="0dp"
-                    app:cardBackgroundColor="@color/droidrun_secondary">
-
-                    <LinearLayout
-                        android:id="@+id/accessibility_status_container"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="12dp">
-                        
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
-                            
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@android:drawable/ic_menu_manage"
-                                app:tint="@color/white" />
-                                
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Accessibility Service"
-                                android:textColor="@color/white"
-                                android:textSize="14sp"
-                                android:textStyle="bold"
-                                android:layout_marginStart="8dp" />
-                        </LinearLayout>
-                        
-                        <LinearLayout
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:background="@drawable/dark_pill_background"
-                            android:paddingHorizontal="8dp"
-                            android:paddingVertical="4dp"
-                            android:layout_marginStart="8dp">
-                            
-                            <View
-                                android:id="@+id/accessibility_indicator"
-                                android:layout_width="8dp"
-                                android:layout_height="8dp"
-                                android:background="@drawable/circle_indicator_red"
-                                android:layout_marginEnd="4dp"
-                                android:layout_gravity="center_vertical"/>
-                            
-                            <TextView
-                                android:id="@+id/accessibility_status_text"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="DISABLED"
-                                android:textColor="@color/white"
-                                android:textSize="10sp"
-                                android:textStyle="bold"/>
-                        </LinearLayout>
-                    </LinearLayout>
-                </com.google.android.material.card.MaterialCardView>
-            </LinearLayout>
-        </com.google.android.material.appbar.CollapsingToolbarLayout>
-    </com.google.android.material.appbar.AppBarLayout>
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:fillViewport="true"
         android:clipToPadding="false"
-        android:paddingHorizontal="24dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="24dp"
-        app:layout_behavior="@string/appbar_scrolling_view_behavior">
+        android:paddingHorizontal="20dp"
+        android:paddingTop="34dp"
+        android:paddingBottom="24dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Controls Section -->
+            <!-- Header with Logo -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="35dp"
+                android:layout_marginBottom="35dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="54dp"
+                    android:layout_marginEnd="0dp"
+                    android:src="@drawable/logo" />
+
+
+            </LinearLayout>
+
+            <!-- Accessibility Service Status Banner -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/controls_card"
+                android:id="@+id/accessibility_banner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
+                android:layout_marginBottom="24dp"
+                app:cardCornerRadius="4dp"
+                app:cardElevation="0dp"
                 app:strokeWidth="0dp"
-                app:cardBackgroundColor="@color/droidrun_surface">
+                app:cardBackgroundColor="@color/alert_error_bg">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="10dp">
+
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/triangle_alert"
+                        app:tint="@color/text_white"
+                        android:layout_marginEnd="12dp" />
+
+                    <TextView
+                        android:id="@+id/accessibility_banner_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Accessibility Service Not Enabled"
+                        android:textColor="@color/text_white"
+                        android:textSize="12sp"
+                        />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/enable_accessibility_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="36dp"
+                        android:text="Enable Now"
+                        android:textSize="12sp"
+                        android:textColor="@color/text_white"
+                        app:backgroundTint="@color/alert_error_button"
+                        app:cornerRadius="2dp"
+                        android:paddingHorizontal="16dp"
+                        android:paddingVertical="0dp"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Accessibility Service Status (Enabled state - hidden by default) -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/accessibility_status_enabled"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="0dp"
+                android:visibility="gone"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/background_card">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:padding="12dp">
+
+                    <View
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:background="@drawable/circle_check"
+                        android:layout_marginEnd="8dp" />
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="Accessibility Service"
+                        android:textColor="@color/text_white"
+                        android:textSize="14sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/fetch_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="40dp"
+                        android:text="Test Fetching"
+                        android:textSize="12sp"
+                        android:textColor="@color/background_primary"
+                        app:backgroundTint="@color/status_success"
+                        app:cornerRadius="2dp"
+                        app:icon="@drawable/refresh_cw"
+                        app:iconTint="@color/background_primary"
+                        app:iconGravity="textStart"
+                        app:iconSize="15dp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="4dp"
+                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Controls Section -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="0dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/background_primary">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -214,386 +162,427 @@
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
                         android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
-                        
+                        android:layout_marginBottom="15dp">
+
                         <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:src="@android:drawable/ic_menu_manage"
-                            app:tint="@color/droidrun_primary"
-                            android:layout_marginEnd="12dp"/>
-                        
+                            android:layout_width="35dp"
+                            android:layout_height="35dp"
+                            android:src="@drawable/settings"
+                            app:tint="@color/text_white"
+                            android:layout_marginEnd="10dp"
+                            android:layout_marginTop="2dp"
+                            />
+
                         <TextView
-                            android:layout_width="match_parent"
+                            android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Controls"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white" />
+                            android:textSize="25sp"
+                            android:textStyle="normal"
+                            android:textColor="@color/text_white" />
+                    </LinearLayout>
+
+                    <!-- Overlay Toggle -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="0dp">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Overlay"
+                            android:textColor="@color/text_white"
+                            android:textSize="16sp" />
+
+                        <com.google.android.material.switchmaterial.SwitchMaterial
+                            android:id="@+id/toggle_overlay"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="true" />
+
+                    </LinearLayout>
+
+                    <!-- Overlay Offset Section -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Overlay Offset"
+                        android:textColor="@color/text_white"
+                        android:textSize="16sp"
+                        android:layout_marginBottom="0dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@color/background_secondary"
+                        android:padding="0dp"
+                        android:layout_marginBottom="12dp">
+
+                        <SeekBar
+                            android:id="@+id/offset_slider"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:max="512"
+                            android:min="0"
+                            android:layout_marginEnd="16dp" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/offset_value_input_layout"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            app:boxStrokeColor="@color/stroke_gray"
+                            app:hintEnabled="false">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/offset_value_display"
+                                android:layout_width="60dp"
+                                android:layout_height="wrap_content"
+                                android:inputType="numberSigned"
+                                android:text="0"
+                                android:textColor="@color/text_white"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:gravity="center"
+                                android:background="@color/background_input" />
+                        </com.google.android.material.textfield.TextInputLayout>
                     </LinearLayout>
 
                     <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:background="@color/background_tertiary"
+                        android:padding="12dp"
+                        android:layout_marginBottom="20dp"
+                        >
+                        <ImageView
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:src="@drawable/info"
+                            app:tint="@color/text_hint"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Tip: Vision mode works even with overlay off"
+                            android:textColor="@color/text_hint"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Socket Server Port"
+                        android:textColor="@color/text_white"
+                        android:textSize="16sp"
+                         />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:padding="0dp">
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/socket_port_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                            app:boxStrokeColor="@color/background_input"
+                            app:hintTextColor="@color/text_gray"
+                            android:textColorHint="@color/text_gray"
+                            >
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/socket_port_input"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_marginBottom="12dp"
+                                android:inputType="number"
+                                android:textSize="16sp"
+                                android:textColor="@color/text_white"
+                                android:background="@color/background_input"
+                                android:text="8080"
+
+                       />
+                        </com.google.android.material.textfield.TextInputLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Connection Details Section -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="12dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@color/background_primary">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp"
+
+               >
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="20dp">
+
+                        <ImageView
+                            android:layout_width="35dp"
+                            android:layout_height="35dp"
+                            android:layout_marginTop="2dp"
+                            android:src="@drawable/unplug"
+                            app:tint="@color/text_white"
+                            android:layout_marginEnd="10dp"/>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Connection Details"
+                            android:textSize="25sp"
+                            android:textStyle="normal"
+                            android:textColor="@color/text_white" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="12dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Socket Status:"
+                            android:textColor="@color/text_gray"
+                            android:textSize="14sp"
+                            android:layout_marginEnd="8dp" />
+
+                        <TextView
+                            android:id="@+id/socket_server_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Service not available"
+                            android:textColor="@color/status_error"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="ADB Forward Command"
+                        android:textColor="@color/text_white"
+                        android:textSize="16sp"
+                        android:textStyle="normal"
+                        android:layout_marginBottom="10dp" />
+
+                    <TextView
+                        android:id="@+id/adb_forward_command"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="adb forward tcp:8080 tcp:8080"
+                        android:textColor="@color/text_gray_light"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:background="@color/background_code"
+                        android:padding="12dp"
+                        android:layout_marginBottom="16dp" />
+
+                    <!-- Collapsible Endpoints Section -->
+                    <LinearLayout
+                        android:id="@+id/endpoints_header"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="?attr/selectableItemBackground"
+                        android:paddingVertical="8dp">
+                        <ImageView
+                            android:id="@+id/endpoints_arrow"
+                            android:layout_width="24dp"
+                            android:layout_height="24dp"
+                            android:src="@drawable/chevron_right"
+                            app:tint="@color/text_white"
+                            android:rotation="0" />
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Endpoints"
+                            android:textColor="@color/text_white"
+                            android:textSize="16sp"
+                            android:textStyle="bold"
+
+                            android:gravity="center_vertical" />
+
+
+                    </LinearLayout>
+
+                    <!-- Endpoints Content (Collapsible) -->
+                    <LinearLayout
+                        android:id="@+id/endpoints_content"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginBottom="20dp">
+                        android:visibility="gone"
+                        android:layout_marginTop="8dp"
+                        android:background="@color/background_code"
+                        android:padding="16dp">
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginBottom="20dp">
-
-                            <com.google.android.material.button.MaterialButton
-                                android:id="@+id/fetch_button"
-                                android:layout_width="0dp"
-                                android:layout_height="56dp"
-                                android:layout_marginEnd="8dp"
-                                android:layout_weight="1"
-                                android:text="Test Fetching Data"
-                                android:textColor="@color/white"
-                                app:backgroundTint="@color/droidrun_primary"
-                                app:cornerRadius="12dp"
-                                app:elevation="4dp"
-                                app:icon="@android:drawable/ic_menu_search"
-                                app:iconTint="@color/white" />
-
-                        </LinearLayout>
-
+                        <!-- GET Endpoints -->
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="12dp"
-                            android:text="Overlay"
-                            android:textColor="@color/white"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:text="Note: When using vision mode, it may be better to deactivate the Overlay"
-                            android:textColor="@color/droidrun_text_secondary"
+                            android:text="GET"
+                            android:textColor="@color/http_get"
                             android:textSize="14sp"
-                            android:textStyle="italic" />
+                            android:textStyle="bold"
+                            android:fontFamily="monospace"
+                            android:layout_marginBottom="8dp" />
 
-                        <com.google.android.material.card.MaterialCardView
+                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            app:cardCornerRadius="12dp"
-                            app:cardElevation="0dp"
-                            app:cardBackgroundColor="#2A332F"
-                            android:layout_marginBottom="16dp">
+                            android:text="/a11y_tree"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="4dp" />
 
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/toggle_overlay"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:checked="true"
-                                android:padding="16dp"
-                                android:text="Show Overlay"
-                                android:textColor="@color/droidrun_text_secondary"
-                                android:textSize="16sp" />
-                        </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="/phone_state"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="4dp" />
 
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="/state"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="4dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="/ping"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="16dp" />
+
+                        <!-- POST Endpoints -->
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:layout_marginBottom="8dp"
-                            android:text="Offset Adjustment"
-                            android:textColor="@color/white"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
+                            android:text="POST"
+                            android:textColor="@color/http_post"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:fontFamily="monospace"
+                            android:layout_marginBottom="8dp" />
 
-                        <com.google.android.material.card.MaterialCardView
+                        <TextView
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            app:cardCornerRadius="12dp"
-                            app:cardElevation="0dp"
-                            app:cardBackgroundColor="@color/droidrun_card"
-                            android:layout_marginBottom="16dp">
+                            android:text="/keyboard/input"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="4dp" />
 
-                            <com.google.android.material.switchmaterial.SwitchMaterial
-                                android:id="@+id/toggle_auto_offset"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:checked="true"
-                                android:padding="16dp"
-                                android:text="Auto-Calculate Offset"
-                                android:textColor="@color/droidrun_text_secondary"
-                                android:textSize="16sp" />
-                        </com.google.android.material.card.MaterialCardView>
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="/keyboard/clear"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="4dp" />
 
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="/keyboard/key"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp"
+                            android:layout_marginBottom="4dp" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="/overlay_offset"
+                            android:textColor="@color/text_gray_light"
+                            android:textSize="13sp"
+                            android:fontFamily="monospace"
+                            android:paddingStart="16dp" />
                     </LinearLayout>
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/offset_input_layout"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        style="@style/Widget.Droidrun.TextInputLayout"
-                        app:endIconMode="clear_text"
-                        android:layout_marginBottom="12dp"
-                        app:hintTextColor="@color/droidrun_primary"
-                        android:textColorHint="@color/droidrun_text_secondary">
-                        
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/offset_input"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="numberSigned"
-                            android:textSize="16sp"
-                            android:textColor="@color/droidrun_text_primary"
-                            android:hint="Enter offset value" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:cardBackgroundColor="#2A332F"
-                        android:padding="8dp">
-                        
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:padding="12dp">
-                            
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="-256"
-                                android:textSize="14sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/droidrun_text_secondary" />
-                                
-                            <SeekBar
-                                android:id="@+id/offset_slider"
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginHorizontal="12dp"
-                                android:max="512"
-                                android:min="0"
-                                android:paddingVertical="8dp" />
-                                
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="+256"
-                                android:textSize="14sp"
-                                android:textStyle="bold"
-                                android:textColor="@color/droidrun_text_secondary" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Socket Server Section -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/socket_server_card"
+            <!-- Footer -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="20dp"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="@color/droidrun_surface">
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingVertical="16dp">
 
-                <LinearLayout
-                    android:layout_width="match_parent"
+                <TextView
+                    android:id="@+id/version_text"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="20dp">
+                    android:layout_weight="1"
+                    android:text="v0.4.0"
+                    android:textColor="@color/text_gray_dark"
+                    android:textSize="14sp" />
 
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:layout_marginBottom="16dp">
-                        
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:src="@android:drawable/ic_dialog_email"
-                            app:tint="@color/droidrun_primary"
-                            android:layout_marginEnd="12dp"/>
-                        
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:text="Socket Server"
-                            android:textSize="20sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/white" />
-                    </LinearLayout>
-
-
-
-                    <com.google.android.material.textfield.TextInputLayout
-                        android:id="@+id/socket_port_input_layout"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        style="@style/Widget.Droidrun.TextInputLayout"
-                        app:endIconMode="clear_text"
-                        android:layout_marginBottom="16dp"
-                        app:hintTextColor="@color/droidrun_primary"
-                        android:textColorHint="@color/droidrun_text_secondary">
-                        
-                        <com.google.android.material.textfield.TextInputEditText
-                            android:id="@+id/socket_port_input"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:inputType="number"
-                            android:textSize="16sp"
-                            android:textColor="@color/droidrun_text_primary"
-                            android:hint="Port (default: 8080)" />
-                    </com.google.android.material.textfield.TextInputLayout>
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:cardBackgroundColor="#2A332F"
-                        android:layout_marginBottom="16dp">
-
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical"
-                            android:padding="16dp">
-
-                            <LinearLayout
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical"
-                                android:layout_marginBottom="8dp">
-
-                                <TextView
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Status: "
-                                    android:textColor="@color/droidrun_text_secondary"
-                                    android:textSize="14sp"
-                                    android:textStyle="bold" />
-
-                                <TextView
-                                    android:id="@+id/socket_server_status"
-                                    android:layout_width="wrap_content"
-                                    android:layout_height="wrap_content"
-                                    android:text="Stopped"
-                                    android:textColor="@color/droidrun_text_primary"
-                                    android:textSize="14sp" />
-                            </LinearLayout>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="ADB Forward Command:"
-                                android:textColor="@color/droidrun_text_secondary"
-                                android:textSize="12sp"
-                                android:textStyle="bold"
-                                android:layout_marginBottom="4dp" />
-
-                            <TextView
-                                android:id="@+id/adb_forward_command"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:text="adb forward tcp:8080 tcp:8080"
-                                android:textColor="@color/droidrun_text_primary"
-                                android:textSize="12sp"
-                                android:fontFamily="monospace"
-                                android:background="@drawable/dark_pill_background"
-                                android:padding="8dp" />
-                        </LinearLayout>
-                    </com.google.android.material.card.MaterialCardView>
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Endpoints: /a11y_tree, /phone_state, /state, /ping\nPOST: /keyboard/input, /keyboard/clear, /keyboard/key, /overlay_offset"
-                        android:textColor="@color/droidrun_text_secondary"
-                        android:textSize="12sp"
-                        android:fontFamily="monospace" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- Results Section -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/response_card"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                app:cardCornerRadius="16dp"
-                app:cardElevation="4dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="@color/droidrun_surface">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:orientation="vertical">
-
-                    <LinearLayout
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:gravity="center_vertical"
-                        android:padding="20dp">
-                        
-                        <ImageView
-                            android:layout_width="32dp"
-                            android:layout_height="32dp"
-                            android:src="@android:drawable/ic_menu_info_details"
-                            app:tint="@color/droidrun_primary"
-                            android:layout_marginEnd="12dp"/>
-
-                        <TextView
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:padding="16dp"
-                            android:text="Logs"
-                            android:textColor="@color/white"
-                            android:textSize="20sp"
-                            android:textStyle="bold" />
-                    </LinearLayout>
-
-                    <View
-                        android:layout_width="match_parent"
-                        android:layout_height="1dp"
-                        android:background="@color/droidrun_divider" />
-
-                    <com.google.android.material.card.MaterialCardView
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:layout_margin="16dp"
-                        app:cardCornerRadius="12dp"
-                        app:cardElevation="0dp"
-                        app:cardBackgroundColor="#2A332F">
-                        
-                        <ScrollView
-                            android:layout_width="match_parent"
-                            android:layout_height="match_parent"
-                            android:clipToPadding="false"
-                            android:padding="16dp">
-
-                            <TextView
-                                android:id="@+id/response_text"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:textSize="14sp"
-                                android:textColor="@color/droidrun_text_secondary"
-                                android:fontFamily="monospace" />
-                        </ScrollView>
-                    </com.google.android.material.card.MaterialCardView>
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
+                <TextView
+                    android:id="@+id/logs_link"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Logs"
+                    android:textColor="@color/text_white"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
-</androidx.coordinatorlayout.widget.CoordinatorLayout> 
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
