@@ -441,8 +441,12 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
 
                 val id = ElementNode.createId(rect, className.substringAfterLast('.'), displayText)
 
+                // Create a copy of the node using obtain() for Android 10 compatibility
+                // Note: AccessibilityNodeInfo(node) constructor doesn't exist in Android 10
+                val nodeCopy = AccessibilityNodeInfo.obtain(node)
+
                 currentElement = ElementNode(
-                    AccessibilityNodeInfo(node),
+                    nodeCopy,
                     Rect(rect),
                     displayText,
                     className.substringAfterLast('.'),
