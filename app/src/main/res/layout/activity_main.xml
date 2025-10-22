@@ -89,56 +89,6 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Keyboard Enable Banner (shown only when accessibility is enabled but keyboard is not) -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/keyboard_banner"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:visibility="gone"
-                app:cardCornerRadius="4dp"
-                app:cardElevation="0dp"
-                app:strokeWidth="0dp"
-                app:cardBackgroundColor="@color/alert_warning_bg">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:padding="10dp">
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/triangle_alert"
-                        app:tint="@color/text_white"
-                        android:layout_marginEnd="12dp" />
-
-                    <TextView
-                        android:id="@+id/keyboard_banner_text"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Enable Droidrun Keyboard for full functionality"
-                        android:textColor="@color/text_white"
-                        android:textSize="12sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/enable_keyboard_button"
-                        android:layout_width="wrap_content"
-                        android:layout_height="36dp"
-                        android:text="Enable Keyboard"
-                        android:textSize="12sp"
-                        android:textColor="@color/text_white"
-                        app:backgroundTint="@color/alert_warning_button"
-                        app:cornerRadius="2dp"
-                        android:paddingHorizontal="16dp"
-                        android:paddingVertical="0dp"
-                        style="@style/Widget.MaterialComponents.Button.UnelevatedButton" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
             <!-- Accessibility Service Status (Enabled state - hidden by default) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/accessibility_status_enabled"

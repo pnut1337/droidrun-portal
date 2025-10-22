@@ -9,10 +9,6 @@
     <!-- Permission for socket communication -->
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- Permission to modify secure settings (granted via ADB) -->
-    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
-
     <!-- Post notifications permission for Android 13+ (API 33+) - Optional for user notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

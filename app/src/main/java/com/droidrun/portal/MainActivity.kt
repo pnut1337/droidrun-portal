@@ -32,15 +32,12 @@ import android.content.ClipData
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import android.view.inputmethod.InputMethodManager
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var accessibilityBanner: com.google.android.material.card.MaterialCardView
     private lateinit var accessibilityStatusEnabled: com.google.android.material.card.MaterialCardView
     private lateinit var enableAccessibilityButton: MaterialButton
-    private lateinit var keyboardBanner: com.google.android.material.card.MaterialCardView
-    private lateinit var enableKeyboardButton: MaterialButton
     private var responseText: String = ""
     private lateinit var versionText: TextView
     private lateinit var logsLink: TextView
@@ -66,11 +63,6 @@ class MainActivity : AppCompatActivity() {
     private var isProgrammaticUpdate = false
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // SharedPreferences key for tracking keyboard prompt
-    private val PREFS_NAME = "DroidrunPrefs"
-    private val KEY_KEYBOARD_PROMPT_SHOWN = "keyboard_prompt_shown"
-    private var previousAccessibilityState = false
-
     // Constants for the position offset slider
     companion object {
         private const val DEFAULT_OFFSET = 0
@@ -90,8 +82,6 @@ class MainActivity : AppCompatActivity() {
         accessibilityBanner = findViewById(R.id.accessibility_banner)
         accessibilityStatusEnabled = findViewById(R.id.accessibility_status_enabled)
         enableAccessibilityButton = findViewById(R.id.enable_accessibility_button)
-        keyboardBanner = findViewById(R.id.keyboard_banner)
-        enableKeyboardButton = findViewById(R.id.enable_keyboard_button)
         versionText = findViewById(R.id.version_text)
         logsLink = findViewById(R.id.logs_link)
         fetchButton = findViewById(R.id.fetch_button)
@@ -137,16 +127,6 @@ class MainActivity : AppCompatActivity() {
             openAccessibilitySettings()
         }
 
-        // Setup enable keyboard button
-        enableKeyboardButton.setOnClickListener {
-            // Check if keyboard is already enabled but just not active
-            if (isDroidrunKeyboardEnabled()) {
-                showInputMethodPicker()
-            } else {
-                promptKeyboardSetup()
-            }
-        }
-
         // Setup logs link to show dialog
         logsLink.setOnClickListener {
             showLogsDialog()
@@ -156,9 +136,7 @@ class MainActivity : AppCompatActivity() {
         requestNotificationPermissionIfNeeded()
 
         // Check initial accessibility status and sync UI
-        previousAccessibilityState = isAccessibilityServiceEnabled()
         updateAccessibilityStatusIndicator()
-        updateKeyboardStatusIndicator()
         syncUIWithAccessibilityService()
         updateSocketServerStatus()
     }
@@ -206,22 +184,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-
-        // Check if accessibility service was just enabled
-        val currentAccessibilityState = isAccessibilityServiceEnabled()
-        val wasJustEnabled = !previousAccessibilityState && currentAccessibilityState
-        previousAccessibilityState = currentAccessibilityState
-
         // Update the accessibility status indicator when app resumes
         updateAccessibilityStatusIndicator()
-        updateKeyboardStatusIndicator()
         syncUIWithAccessibilityService()
         updateSocketServerStatus()
-
-        // If accessibility was just enabled, prompt for keyboard setup
-        if (wasJustEnabled && !isDroidrunKeyboardEnabled()) {
-            promptKeyboardSetup()
-        }
     }
 
     private fun syncUIWithAccessibilityService() {
@@ -542,254 +508,6 @@ class MainActivity : AppCompatActivity() {
                 this,
                 "Error opening accessibility settings",
                 Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    // Check if DroidRun Keyboard is enabled
-    private fun isDroidrunKeyboardEnabled(): Boolean {
-        try {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            val enabledInputMethods = imm.enabledInputMethodList
-
-            val droidrunKeyboardId = "$packageName/.DroidrunKeyboardIME"
-
-            return enabledInputMethods.any { inputMethod ->
-                val fullId = "${inputMethod.packageName}/${inputMethod.serviceName}"
-                fullId == droidrunKeyboardId
-            }
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error checking keyboard status: ${e.message}")
-            return false
-        }
-    }
-
-    // Check if DroidRun Keyboard is the currently active keyboard
-    private fun isDroidrunKeyboardActive(): Boolean {
-        try {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            val currentInputMethod = Settings.Secure.getString(
-                contentResolver,
-                Settings.Secure.DEFAULT_INPUT_METHOD
-            )
-
-            val droidrunKeyboardId = "$packageName/.DroidrunKeyboardIME"
-            return currentInputMethod == droidrunKeyboardId
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error checking active keyboard: ${e.message}")
-            return false
-        }
-    }
-
-    // Update the keyboard status indicator
-    private fun updateKeyboardStatusIndicator() {
-        val isAccessibilityEnabled = isAccessibilityServiceEnabled()
-        val isKeyboardEnabled = isDroidrunKeyboardEnabled()
-        val isKeyboardActive = isDroidrunKeyboardActive()
-
-        // Show keyboard banner if accessibility is enabled but keyboard is not enabled or not active
-        if (isAccessibilityEnabled && (!isKeyboardEnabled || !isKeyboardActive)) {
-            keyboardBanner.visibility = View.VISIBLE
-
-            // Update banner text based on keyboard state
-            val bannerText = findViewById<TextView>(R.id.keyboard_banner_text)
-            val bannerButton = findViewById<MaterialButton>(R.id.enable_keyboard_button)
-
-            if (!isKeyboardEnabled) {
-                bannerText.text = "Enable Droidrun Keyboard for full functionality"
-                bannerButton.text = "Enable Keyboard"
-            } else {
-                bannerText.text = "Switch to Droidrun Keyboard for full functionality"
-                bannerButton.text = "Switch Keyboard"
-            }
-        } else {
-            keyboardBanner.visibility = View.GONE
-        }
-    }
-
-    // Check if WRITE_SECURE_SETTINGS permission is granted
-    private fun hasWriteSecureSettingsPermission(): Boolean {
-        return try {
-            // Try to write a test value to check if we have permission
-            Settings.Secure.putString(
-                contentResolver,
-                "test_write_permission",
-                "test"
-            )
-            true
-        } catch (e: SecurityException) {
-            false
-        } catch (e: Exception) {
-            false
-        }
-    }
-
-    // Programmatically enable and set DroidRun Keyboard as default
-    private fun setDroidrunKeyboardAsDefault(): Boolean {
-        if (!hasWriteSecureSettingsPermission()) {
-            Log.w("DROIDRUN_MAIN", "WRITE_SECURE_SETTINGS permission not granted")
-            return false
-        }
-
-        return try {
-            val droidrunKeyboardId = "$packageName/.DroidrunKeyboardIME"
-            val resolver = contentResolver
-
-            // Get currently enabled input methods
-            val enabledInputMethods = Settings.Secure.getString(
-                resolver,
-                Settings.Secure.ENABLED_INPUT_METHODS
-            ) ?: ""
-
-            // Add DroidRun Keyboard to enabled list if not already there
-            if (!enabledInputMethods.contains(droidrunKeyboardId)) {
-                val newEnabledList = if (enabledInputMethods.isEmpty()) {
-                    droidrunKeyboardId
-                } else {
-                    "$enabledInputMethods:$droidrunKeyboardId"
-                }
-
-                Settings.Secure.putString(
-                    resolver,
-                    Settings.Secure.ENABLED_INPUT_METHODS,
-                    newEnabledList
-                )
-                Log.d("DROIDRUN_MAIN", "Added DroidRun Keyboard to enabled input methods")
-            }
-
-            // Set DroidRun Keyboard as the default input method
-            Settings.Secure.putString(
-                resolver,
-                Settings.Secure.DEFAULT_INPUT_METHOD,
-                droidrunKeyboardId
-            )
-
-            Log.d("DROIDRUN_MAIN", "Successfully set DroidRun Keyboard as default")
-            true
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error setting DroidRun Keyboard as default: ${e.message}", e)
-            false
-        }
-    }
-
-    // Open input method settings to enable the keyboard
-    private fun openInputMethodSettings() {
-        try {
-            val intent = Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)
-            startActivity(intent)
-            Toast.makeText(
-                this,
-                "Please enable Droidrun Keyboard in Language & Input settings",
-                Toast.LENGTH_LONG
-            ).show()
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error opening input method settings: ${e.message}")
-            Toast.makeText(
-                this,
-                "Error opening input method settings",
-                Toast.LENGTH_SHORT
-            ).show()
-        }
-    }
-
-    // Prompt user to set up keyboard after enabling accessibility service
-    private fun promptKeyboardSetup() {
-        try {
-            // Check if we have WRITE_SECURE_SETTINGS permission
-            if (hasWriteSecureSettingsPermission()) {
-                // We can set keyboard automatically!
-                AlertDialog.Builder(this)
-                    .setTitle("Set Droidrun Keyboard")
-                    .setMessage("DroidRun can automatically set its keyboard as the default input method.\n\nWould you like to do this now?")
-                    .setPositiveButton("Set Now") { _, _ ->
-                        val success = setDroidrunKeyboardAsDefault()
-                        if (success) {
-                            Toast.makeText(
-                                this,
-                                "✓ Droidrun Keyboard is now the default keyboard!",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            updateKeyboardStatusIndicator()
-                        } else {
-                            Toast.makeText(
-                                this,
-                                "Failed to set keyboard. Please try manually.",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            showManualKeyboardSetup()
-                        }
-                    }
-                    .setNegativeButton("Later", null)
-                    .setCancelable(true)
-                    .show()
-            } else {
-                // No permission, show manual setup flow
-                showManualKeyboardSetup()
-            }
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error showing keyboard setup prompt: ${e.message}")
-        }
-    }
-
-    // Show manual keyboard setup flow
-    private fun showManualKeyboardSetup() {
-        AlertDialog.Builder(this)
-            .setTitle("Enable Droidrun Keyboard")
-            .setMessage("To use full automation features, please enable and switch to Droidrun Keyboard.\n\nWould you like to set it up now?\n\n💡 Tip: For automatic setup, grant permission via ADB:\nadb shell pm grant $packageName android.permission.WRITE_SECURE_SETTINGS")
-            .setPositiveButton("Enable Keyboard") { _, _ ->
-                // First, open settings to enable the keyboard
-                openInputMethodSettings()
-
-                // Show a follow-up prompt after a delay to switch keyboard
-                mainHandler.postDelayed({
-                    showKeyboardSwitchPrompt()
-                }, 2000)
-            }
-            .setNeutralButton("Copy ADB Command") { _, _ ->
-                val adbCommand = "adb shell pm grant $packageName android.permission.WRITE_SECURE_SETTINGS"
-                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                val clip = ClipData.newPlainText("ADB Command", adbCommand)
-                clipboard.setPrimaryClip(clip)
-                Toast.makeText(this, "ADB command copied to clipboard", Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton("Later", null)
-            .setCancelable(true)
-            .show()
-    }
-
-    // Show prompt to switch keyboard (after enabling)
-    private fun showKeyboardSwitchPrompt() {
-        try {
-            AlertDialog.Builder(this)
-                .setTitle("Switch Keyboard")
-                .setMessage("After enabling Droidrun Keyboard in settings, you can switch to it using the keyboard selector.\n\nWould you like to open the keyboard selector now?")
-                .setPositiveButton("Switch Now") { _, _ ->
-                    showInputMethodPicker()
-                }
-                .setNegativeButton("Later", null)
-                .setCancelable(true)
-                .show()
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error showing keyboard switch prompt: ${e.message}")
-        }
-    }
-
-    // Show the system's input method picker dialog
-    private fun showInputMethodPicker() {
-        try {
-            val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
-            imm.showInputMethodPicker()
-            Toast.makeText(
-                this,
-                "Select 'Droidrun Keyboard' from the list",
-                Toast.LENGTH_LONG
-            ).show()
-        } catch (e: Exception) {
-            Log.e("DROIDRUN_MAIN", "Error showing input method picker: ${e.message}")
-            Toast.makeText(
-                this,
-                "Could not open keyboard selector. You can switch keyboards from your notification panel.",
-                Toast.LENGTH_LONG
             ).show()
         }
     }
