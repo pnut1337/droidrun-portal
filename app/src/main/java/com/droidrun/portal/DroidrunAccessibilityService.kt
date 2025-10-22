@@ -252,15 +252,21 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                 // Apply offset: auto or manual
                 val offsetToApply = if (config.autoOffsetEnabled) {
                     val autoOffset = overlayManager.calculateAutoOffset()
-                    // Save the calculated auto offset back to ConfigManager
-                    // so MainActivity can read the correct value
-                    configManager.overlayOffset = autoOffset
+                    // Only update ConfigManager if the auto offset has changed
+                    // This prevents overwriting user's manual settings
+                    if (autoOffset != config.overlayOffset) {
+                        Log.d(TAG, "Auto offset calculated: $autoOffset (was ${config.overlayOffset})")
+                        configManager.overlayOffset = autoOffset
+                    }
                     autoOffset
                 } else {
+                    // Use the saved manual offset
+                    Log.d(TAG, "Using manual offset: ${config.overlayOffset}")
                     config.overlayOffset
                 }
 
                 overlayManager.setPositionOffsetY(offsetToApply)
+                Log.d(TAG, "Applied offset: $offsetToApply (auto: ${config.autoOffsetEnabled})")
             } catch (e: Exception) {
                 Log.e(TAG, "Error applying configuration: ${e.message}", e)
             }
@@ -307,13 +313,19 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         }
 
         return try {
+            // When user manually sets offset, disable auto offset
+            if (configManager.autoOffsetEnabled) {
+                Log.d(TAG, "Disabling auto offset because user set manual offset")
+                configManager.autoOffsetEnabled = false
+            }
+
             configManager.overlayOffset = offset
 
             mainHandler.post {
                 overlayManager.setPositionOffsetY(offset)
             }
 
-            Log.d(TAG, "Overlay offset set to: $offset")
+            Log.d(TAG, "Overlay offset set to: $offset (auto offset disabled)")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Error setting overlay offset: ${e.message}", e)

@@ -8,7 +8,7 @@ import android.content.SharedPreferences
  * Handles SharedPreferences operations and provides a clean API for configuration management
  */
 class ConfigManager private constructor(private val context: Context) {
-    
+
     companion object {
         private const val PREFS_NAME = "droidrun_config"
         private const val KEY_OVERLAY_VISIBLE = "overlay_visible"
@@ -18,26 +18,26 @@ class ConfigManager private constructor(private val context: Context) {
         private const val KEY_SOCKET_SERVER_PORT = "socket_server_port"
         private const val DEFAULT_OFFSET = 0
         private const val DEFAULT_SOCKET_PORT = 8080
-        
+
         @Volatile
         private var INSTANCE: ConfigManager? = null
-        
+
         fun getInstance(context: Context): ConfigManager {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: ConfigManager(context.applicationContext).also { INSTANCE = it }
             }
         }
     }
-    
+
     private val sharedPrefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-    
+
     // Overlay visibility
     var overlayVisible: Boolean
         get() = sharedPrefs.getBoolean(KEY_OVERLAY_VISIBLE, true)
         set(value) {
             sharedPrefs.edit().putBoolean(KEY_OVERLAY_VISIBLE, value).apply()
         }
-    
+
     // Overlay offset
     var overlayOffset: Int
         get() = sharedPrefs.getInt(KEY_OVERLAY_OFFSET, DEFAULT_OFFSET)
@@ -47,7 +47,7 @@ class ConfigManager private constructor(private val context: Context) {
 
     // Auto offset enabled
     var autoOffsetEnabled: Boolean
-        get() = sharedPrefs.getBoolean(KEY_AUTO_OFFSET_ENABLED, true)
+        get() = sharedPrefs.getBoolean(KEY_AUTO_OFFSET_ENABLED, false)  // Default to false (manual mode)
         set(value) {
             sharedPrefs.edit().putBoolean(KEY_AUTO_OFFSET_ENABLED, value).apply()
         }
@@ -58,14 +58,14 @@ class ConfigManager private constructor(private val context: Context) {
         set(value) {
             sharedPrefs.edit().putBoolean(KEY_SOCKET_SERVER_ENABLED, value).apply()
         }
-    
+
     // Socket server port
     var socketServerPort: Int
         get() = sharedPrefs.getInt(KEY_SOCKET_SERVER_PORT, DEFAULT_SOCKET_PORT)
         set(value) {
             sharedPrefs.edit().putInt(KEY_SOCKET_SERVER_PORT, value).apply()
         }
-    
+
     // Listener interface for configuration changes
     interface ConfigChangeListener {
         fun onOverlayVisibilityChanged(visible: Boolean)
@@ -73,22 +73,22 @@ class ConfigManager private constructor(private val context: Context) {
         fun onSocketServerEnabledChanged(enabled: Boolean)
         fun onSocketServerPortChanged(port: Int)
     }
-    
+
     private val listeners = mutableSetOf<ConfigChangeListener>()
-    
+
     fun addListener(listener: ConfigChangeListener) {
         listeners.add(listener)
     }
-    
+
     fun removeListener(listener: ConfigChangeListener) {
         listeners.remove(listener)
     }
-    
+
     fun setOverlayVisibleWithNotification(visible: Boolean) {
         overlayVisible = visible
         listeners.forEach { it.onOverlayVisibilityChanged(visible) }
     }
-    
+
     fun setOverlayOffsetWithNotification(offset: Int) {
         overlayOffset = offset
         listeners.forEach { it.onOverlayOffsetChanged(offset) }
@@ -98,12 +98,12 @@ class ConfigManager private constructor(private val context: Context) {
         socketServerEnabled = enabled
         listeners.forEach { it.onSocketServerEnabledChanged(enabled) }
     }
-    
+
     fun setSocketServerPortWithNotification(port: Int) {
         socketServerPort = port
         listeners.forEach { it.onSocketServerPortChanged(port) }
     }
-    
+
     // Bulk configuration update
     fun updateConfiguration(
         overlayVisible: Boolean? = null,
@@ -114,12 +114,12 @@ class ConfigManager private constructor(private val context: Context) {
     ) {
         val editor = sharedPrefs.edit()
         var hasChanges = false
-        
+
         overlayVisible?.let {
             editor.putBoolean(KEY_OVERLAY_VISIBLE, it)
             hasChanges = true
         }
-        
+
         overlayOffset?.let {
             editor.putInt(KEY_OVERLAY_OFFSET, it)
             hasChanges = true
@@ -134,15 +134,15 @@ class ConfigManager private constructor(private val context: Context) {
             editor.putBoolean(KEY_SOCKET_SERVER_ENABLED, it)
             hasChanges = true
         }
-        
+
         socketServerPort?.let {
             editor.putInt(KEY_SOCKET_SERVER_PORT, it)
             hasChanges = true
         }
-        
+
         if (hasChanges) {
             editor.apply()
-            
+
             // Notify listeners
             overlayVisible?.let { listeners.forEach { listener -> listener.onOverlayVisibilityChanged(it) } }
             overlayOffset?.let { listeners.forEach { listener -> listener.onOverlayOffsetChanged(it) } }
@@ -150,7 +150,7 @@ class ConfigManager private constructor(private val context: Context) {
             socketServerPort?.let { listeners.forEach { listener -> listener.onSocketServerPortChanged(it) } }
         }
     }
-    
+
     // Get all configuration as a data class
     data class Configuration(
         val overlayVisible: Boolean,
@@ -169,4 +169,4 @@ class ConfigManager private constructor(private val context: Context) {
             socketServerPort = socketServerPort
         )
     }
-} 
+}
