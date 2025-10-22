@@ -18,13 +18,7 @@ import android.graphics.Bitmap
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CompletableFuture
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.content.Intent
 import android.os.Build
-import androidx.core.app.NotificationCompat
-import android.content.pm.ServiceInfo
 
 class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.ConfigChangeListener {
 
@@ -36,11 +30,6 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         // Periodic update constants
         private const val REFRESH_INTERVAL_MS = 250L // Update every 250ms
         private const val MIN_FRAME_TIME_MS = 16L // Minimum time between frames (roughly 60 FPS)
-
-        // Notification constants for foreground service
-        private const val NOTIFICATION_CHANNEL_ID = "droidrun_accessibility_service"
-        private const val NOTIFICATION_CHANNEL_NAME = "Droidrun Portal Service"
-        private const val NOTIFICATION_ID = 1001
 
         fun getInstance(): DroidrunAccessibilityService? = instance
     }
@@ -61,8 +50,8 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     override fun onCreate() {
         super.onCreate()
 
-        // Start foreground service with notification for Android 10+
-        startForegroundServiceWithNotification()
+        // NOTE: Accessibility Service should NOT call startForeground()
+        // It is managed by the system and doesn't need foreground notification
 
         overlayManager = OverlayManager(this)
         val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
@@ -90,62 +79,6 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         socketServer = SocketServer(this)
 
         isInitialized = true
-    }
-
-    private fun startForegroundServiceWithNotification() {
-        try {
-            // Create notification channel for Android O+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-                val channel = NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID,
-                    NOTIFICATION_CHANNEL_NAME,
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = "Droidrun Portal accessibility service is running"
-                    setShowBadge(false)
-                }
-                notificationManager.createNotificationChannel(channel)
-            }
-
-            // Create notification
-            val notificationIntent = Intent(this, MainActivity::class.java)
-            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-            } else {
-                PendingIntent.FLAG_UPDATE_CURRENT
-            }
-            val pendingIntent = PendingIntent.getActivity(
-                this, 0, notificationIntent, pendingIntentFlags
-            )
-
-            val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setContentTitle("Droidrun Portal")
-                .setContentText("Accessibility service is active")
-                .setSmallIcon(android.R.drawable.ic_menu_view)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .build()
-
-            // Start foreground with proper service type for Android Q+
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                // Android 14+ (API 34+) - use specialUse service type
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                )
-            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Android 10-13 (API 29-33) - startForeground without service type
-                startForeground(NOTIFICATION_ID, notification)
-            }
-
-            Log.d(TAG, "Foreground service started with notification")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
-        }
     }
 
     override fun onServiceConnected() {
