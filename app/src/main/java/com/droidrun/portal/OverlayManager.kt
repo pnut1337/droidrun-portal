@@ -29,7 +29,7 @@ class OverlayManager(private val context: Context) {
     private var elementIndexCounter = 0 // Counter to assign indexes to elements
     private val isOverlayReady = AtomicBoolean(false)
     private var onReadyCallback: (() -> Unit)? = null
-    
+
     private var positionOffsetY = 0 // Default offset value
 
     companion object {
@@ -55,21 +55,21 @@ class OverlayManager(private val context: Context) {
     }
 
     data class ElementInfo(
-        val rect: Rect, 
-        val type: String, 
+        val rect: Rect,
+        val type: String,
         val text: String,
         val depth: Int = 0, // Added depth field to track hierarchy level
         val color: Int = Color.GREEN, // Add color field with default value
         val index: Int = 0 // Index number for identifying the element
     )
-    
+
     // Add method to adjust the vertical offset
     fun setPositionOffsetY(offsetY: Int) {
         this.positionOffsetY = offsetY
         // Redraw existing elements with the new offset
         val existingElements = ArrayList(elementRects)
         elementRects.clear()
-        
+
         // Re-add elements with the updated offset
         for (element in existingElements) {
             val originalRect = Rect(element.rect)
@@ -84,10 +84,10 @@ class OverlayManager(private val context: Context) {
                 color = element.color
             )
         }
-        
+
         refreshOverlay()
     }
-    
+
     // Add getter for the current offset value
     fun getPositionOffsetY(): Int {
         return positionOffsetY
@@ -121,7 +121,8 @@ class OverlayManager(private val context: Context) {
                 )
                 -insets.top  // Negative to shift upward
             } else {
-                getStatusBarHeightFromResources()  // Fallback
+                // For Android 10 (API 29), fall back to resource-based method
+                getStatusBarHeightFromResources()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error getting insets-based offset: ${e.message}", e)
@@ -195,12 +196,12 @@ class OverlayManager(private val context: Context) {
                 PixelFormat.TRANSLUCENT
             )
             params.gravity = Gravity.TOP or Gravity.START
-            
+
             handler.post {
                 try {
                     windowManager.addView(overlayView, params)
                     isOverlayVisible = true
-                    
+
                     // Set ready state and notify callback after a short delay to ensure view is laid out
                     handler.postDelayed({
                         if (overlayView?.parent != null) {
@@ -261,14 +262,14 @@ class OverlayManager(private val context: Context) {
         elementRects.add(ElementInfo(correctedRect, type, text, depth, colorFromScheme, elementIndex))
         // Don't refresh on each add to avoid excessive redraws with many elements
     }
-    
+
     // Correct the rectangle position to better match the actual UI element
     private fun correctRectPosition(rect: Rect): Rect {
         val correctedRect = Rect(rect)
-        
+
         // Apply the vertical offset to shift the rectangle upward
         correctedRect.offset(0, positionOffsetY)
-        
+
         return correctedRect
     }
 
@@ -286,17 +287,17 @@ class OverlayManager(private val context: Context) {
     fun getElementCount(): Int {
         return elementRects.size
     }
-    
+
     // Methods to temporarily disable/enable overlay drawing for clean screenshots
     fun setDrawingEnabled(enabled: Boolean) {
         isDrawingEnabled = enabled
         refreshOverlay()
     }
-    
+
     fun isDrawingEnabled(): Boolean {
         return isDrawingEnabled
     }
-    
+
     // Convenience method to temporarily hide overlay for clean screenshots
     fun withOverlayHidden(action: () -> Unit) {
         val wasEnabled = isDrawingEnabled
@@ -322,7 +323,7 @@ class OverlayManager(private val context: Context) {
             // Enable hardware acceleration features
             flags = Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG
         }
-        
+
         private val textPaint = Paint().apply {
             color = Color.WHITE
             textSize = 32f  // Increased text size for better visibility
@@ -330,7 +331,7 @@ class OverlayManager(private val context: Context) {
             // Enable hardware acceleration features
             flags = Paint.ANTI_ALIAS_FLAG or Paint.DITHER_FLAG
         }
-        
+
         private val textBackgroundPaint = Paint().apply {
             // Color will be set dynamically to match the border color
             style = Paint.Style.FILL
@@ -362,7 +363,7 @@ class OverlayManager(private val context: Context) {
                 }
 
                 super.onDraw(canvas)
-                
+
                 val startTime = System.currentTimeMillis()
 
                 if (elementRects.isEmpty()) {
@@ -371,13 +372,13 @@ class OverlayManager(private val context: Context) {
                     }
                     return
                 }
-                
+
                 // Create a local copy to prevent concurrent modification
                 val elementsToDraw = ArrayList(elementRects)
-                
+
                 // Sort elements by depth for drawing order
                 val sortedElements = elementsToDraw.sortedBy { it.depth }
-                
+
                 for (elementInfo in sortedElements) {
                     drawElement(canvas, elementInfo)
                 }
@@ -396,9 +397,9 @@ class OverlayManager(private val context: Context) {
                     return
                 }
 
-                // IMPORTANT: Set the color for this specific element 
+                // IMPORTANT: Set the color for this specific element
                 val elementColor = elementInfo.color
-                
+
                 // Ensure color has full alpha for visibility
                 val colorWithAlpha = Color.argb(
                     255,
@@ -406,9 +407,9 @@ class OverlayManager(private val context: Context) {
                     Color.green(elementColor),
                     Color.blue(elementColor)
                 )
-                
+
                 boxPaint.color = colorWithAlpha
-                
+
                 // Set the background color to match the border color with some transparency
                 textBackgroundPaint.color = Color.argb(
                     200, // Semi-transparent
@@ -416,19 +417,19 @@ class OverlayManager(private val context: Context) {
                     Color.green(elementColor),
                     Color.blue(elementColor)
                 )
-                
+
                 // Draw the rectangle with the specified color
                 canvas.drawRect(elementInfo.rect, boxPaint)
-                
+
                 // Draw the index number in the top-right corner
                 val displayText = "${elementInfo.index}"
                 val textWidth = textPaint.measureText(displayText)
                 val textHeight = 36f  // Larger text height to match increased text size
-                
+
                 // Position for top-right corner with small padding
                 val textX = elementInfo.rect.right - textWidth - 4f  // 4px padding from right edge
                 val textY = elementInfo.rect.top + textHeight  // Position text at top with some padding
-                
+
                 // Calculate background rectangle for the text
                 val backgroundPadding = 4f
                 val backgroundRect = Rect(
@@ -437,7 +438,7 @@ class OverlayManager(private val context: Context) {
                     (textX + textWidth + backgroundPadding).toInt(),
                     (textY + backgroundPadding).toInt()
                 )
-                
+
                 // Draw background and text
                 canvas.drawRect(backgroundRect, textBackgroundPaint)
                 canvas.drawText(
@@ -468,9 +469,9 @@ class OverlayManager(private val context: Context) {
                 Log.e(TAG, "Error drawing debug rectangle: ${e.message}", e)
             }
         }
-        
+
         private fun isDebugging(): Boolean {
             return false // Set to true to show test rectangle
         }
     }
-} 
+}

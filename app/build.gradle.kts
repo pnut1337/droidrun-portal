@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId = "com.droidrun.portal"
-        minSdk = 30
+        minSdk = 29  // Android 10 (Q)
         targetSdk = 34
-        versionCode = 39
-        versionName = "0.3.9"
+        versionCode = 40
+        versionName = "0.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

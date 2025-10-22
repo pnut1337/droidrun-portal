@@ -18,6 +18,13 @@ import android.graphics.Bitmap
 import android.util.Base64
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.CompletableFuture
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.content.Intent
+import android.os.Build
+import androidx.core.app.NotificationCompat
+import android.content.pm.ServiceInfo
 
 class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.ConfigChangeListener {
 
@@ -30,6 +37,11 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         private const val REFRESH_INTERVAL_MS = 250L // Update every 250ms
         private const val MIN_FRAME_TIME_MS = 16L // Minimum time between frames (roughly 60 FPS)
 
+        // Notification constants for foreground service
+        private const val NOTIFICATION_CHANNEL_ID = "droidrun_accessibility_service"
+        private const val NOTIFICATION_CHANNEL_NAME = "Droidrun Portal Service"
+        private const val NOTIFICATION_ID = 1001
+
         fun getInstance(): DroidrunAccessibilityService? = instance
     }
 
@@ -38,7 +50,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     private lateinit var configManager: ConfigManager
     private val mainHandler = Handler(Looper.getMainLooper())
     private var socketServer: SocketServer? = null
-    
+
     // Periodic update state
     private var isInitialized = false
     private val isProcessing = AtomicBoolean(false)
@@ -48,20 +60,92 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
 
     override fun onCreate() {
         super.onCreate()
+
+        // Start foreground service with notification for Android 10+
+        startForegroundServiceWithNotification()
+
         overlayManager = OverlayManager(this)
         val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-        val windowMetrics = windowManager.currentWindowMetrics
-        val bounds = windowMetrics.bounds
-        screenBounds.set(0, 0, bounds.width(), bounds.height())
-        
+
+        // Get screen bounds compatible with Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            val windowMetrics = windowManager.currentWindowMetrics
+            val bounds = windowMetrics.bounds
+            screenBounds.set(0, 0, bounds.width(), bounds.height())
+        } else {
+            // Fallback for Android 10 (API 29)
+            @Suppress("DEPRECATION")
+            val display = windowManager.defaultDisplay
+            val displayMetrics = android.util.DisplayMetrics()
+            @Suppress("DEPRECATION")
+            display.getRealMetrics(displayMetrics)
+            screenBounds.set(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
+        }
+
         // Initialize ConfigManager
         configManager = ConfigManager.getInstance(this)
         configManager.addListener(this)
-        
+
         // Initialize SocketServer
         socketServer = SocketServer(this)
-        
+
         isInitialized = true
+    }
+
+    private fun startForegroundServiceWithNotification() {
+        try {
+            // Create notification channel for Android O+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                val channel = NotificationChannel(
+                    NOTIFICATION_CHANNEL_ID,
+                    NOTIFICATION_CHANNEL_NAME,
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Droidrun Portal accessibility service is running"
+                    setShowBadge(false)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            // Create notification
+            val notificationIntent = Intent(this, MainActivity::class.java)
+            val pendingIntentFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+            val pendingIntent = PendingIntent.getActivity(
+                this, 0, notificationIntent, pendingIntentFlags
+            )
+
+            val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+                .setContentTitle("Droidrun Portal")
+                .setContentText("Accessibility service is active")
+                .setSmallIcon(android.R.drawable.ic_menu_view)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .build()
+
+            // Start foreground with proper service type for Android Q+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+ (API 34+) - use specialUse service type
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Android 10-13 (API 29-33) - startForeground without service type
+                startForeground(NOTIFICATION_ID, notification)
+            }
+
+            Log.d(TAG, "Foreground service started with notification")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting foreground service: ${e.message}", e)
+        }
     }
 
     override fun onServiceConnected() {
@@ -96,7 +180,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
 
         // Start periodic updates
         startPeriodicUpdates()
-        
+
         // Start socket server if enabled
         startSocketServerIfEnabled()
 
@@ -105,16 +189,16 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         val eventPackage = event?.packageName?.toString() ?: ""
-        
+
         // Detect package changes
         if (eventPackage.isNotEmpty() && eventPackage != currentPackageName && currentPackageName.isNotEmpty()) {
             resetOverlayState()
         }
-        
+
         if (eventPackage.isNotEmpty()) {
             currentPackageName = eventPackage
         }
-        
+
         // Trigger update on relevant events
         when (event?.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
@@ -131,7 +215,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
             if (isInitialized && configManager.overlayVisible) {
                 val currentTime = System.currentTimeMillis()
                 val timeSinceLastUpdate = currentTime - lastUpdateTime
-                
+
                 if (timeSinceLastUpdate >= MIN_FRAME_TIME_MS) {
                     refreshVisibleElements()
                     lastUpdateTime = currentTime
@@ -146,7 +230,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         mainHandler.postDelayed(updateRunnable, REFRESH_INTERVAL_MS)
         Log.d(TAG, "Started periodic updates")
     }
-    
+
     private fun stopPeriodicUpdates() {
         mainHandler.removeCallbacks(updateRunnable)
         Log.d(TAG, "Stopped periodic updates")
@@ -156,31 +240,31 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         if (!isProcessing.compareAndSet(false, true)) {
             return // Already processing
         }
-        
+
         try {
             if (currentPackageName.isEmpty()) {
                 overlayManager.clearElements()
                 overlayManager.refreshOverlay()
                 return
             }
-            
+
             // Clear previous elements
             clearElementList()
-            
+
             // Get fresh elements
             val elements = getVisibleElementsInternal()
-            
+
             // Update overlay if visible
             if (configManager.overlayVisible && elements.isNotEmpty()) {
                 overlayManager.clearElements()
-                
+
                 elements.forEach { rootElement ->
                     addElementAndChildrenToOverlay(rootElement, 0)
                 }
-                
+
                 overlayManager.refreshOverlay()
             }
-            
+
         } catch (e: Exception) {
             Log.e(TAG, "Error refreshing visible elements: ${e.message}", e)
         } finally {
@@ -230,7 +314,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                 } else {
                     config.overlayOffset
                 }
-                
+
                 overlayManager.setPositionOffsetY(offsetToApply)
             } catch (e: Exception) {
                 Log.e(TAG, "Error applying configuration: ${e.message}", e)
@@ -242,7 +326,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     fun setOverlayVisible(visible: Boolean): Boolean {
         return try {
             configManager.overlayVisible = visible
-            
+
             mainHandler.post {
                 if (visible) {
                     overlayManager.showOverlay()
@@ -252,7 +336,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                     overlayManager.hideOverlay()
                 }
             }
-            
+
             Log.d(TAG, "Overlay visibility set to: $visible")
             true
         } catch (e: Exception) {
@@ -266,11 +350,11 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     fun setOverlayOffset(offset: Int): Boolean {
         return try {
             configManager.overlayOffset = offset
-            
+
             mainHandler.post {
                 overlayManager.setPositionOffsetY(offset)
             }
-            
+
             Log.d(TAG, "Overlay offset set to: $offset")
             true
         } catch (e: Exception) {
@@ -441,7 +525,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     private fun getAppName(packageName: String?): String? {
         return try {
             if (packageName == null) return null
-            
+
             val packageManager = packageManager
             val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
             packageManager.getApplicationLabel(applicationInfo).toString()
@@ -525,7 +609,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
             if (wasRunning) {
                 server.stop()
             }
-            
+
             // Start server on new port if it was running or if socket server is enabled
             if (wasRunning || configManager.socketServerEnabled) {
                 val success = server.start(port)
@@ -541,6 +625,14 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     // Screenshot functionality
     fun takeScreenshotBase64(hideOverlay: Boolean = true): CompletableFuture<String> {
         val future = CompletableFuture<String>()
+
+        // Check if screenshot API is supported (API 34+)
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val errorMsg = "error: Screenshot API is only available on Android 14+ (API 34+). Current version: ${Build.VERSION.SDK_INT}"
+            Log.e(TAG, errorMsg)
+            future.complete(errorMsg)
+            return future
+        }
 
         // Temporarily hide overlay if requested
         val wasOverlayDrawingEnabled = if (hideOverlay) {
@@ -563,22 +655,31 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         } catch (e: Exception) {
             Log.e(TAG, "Error taking screenshot", e)
             future.complete("error: Failed to take screenshot: ${e.message}")
-            
+
             // Restore overlay drawing state in case of exception
             if (hideOverlay) {
                 overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled)
             }
         }
-        
+
         return future
     }
-    
+
     private fun performScreenshotCapture(future: CompletableFuture<String>, wasOverlayDrawingEnabled: Boolean, hideOverlay: Boolean) {
+        // This method should only be called on API 34+, but add safety check
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            future.complete("error: Screenshot API not supported on this Android version")
+            if (hideOverlay) {
+                overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled)
+            }
+            return
+        }
+
         try {
             takeScreenshot(
                 Display.DEFAULT_DISPLAY,
-                mainHandler.looper.thread.contextClassLoader?.let { 
-                    java.util.concurrent.Executors.newSingleThreadExecutor() 
+                mainHandler.looper.thread.contextClassLoader?.let {
+                    java.util.concurrent.Executors.newSingleThreadExecutor()
                 } ?: java.util.concurrent.Executors.newSingleThreadExecutor(),
                 object : TakeScreenshotCallback {
                     override fun onSuccess(screenshotResult: ScreenshotResult) {
@@ -587,17 +688,17 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                                 screenshotResult.hardwareBuffer,
                                 screenshotResult.colorSpace
                             )
-                            
+
                             if (bitmap == null) {
                                 Log.e(TAG, "Failed to create bitmap from hardware buffer")
                                 screenshotResult.hardwareBuffer.close()
                                 future.complete("error: Failed to create bitmap from screenshot data")
                                 return
                             }
-                            
+
                             val byteArrayOutputStream = ByteArrayOutputStream()
                             val compressionSuccess = bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream)
-                            
+
                             if (!compressionSuccess) {
                                 Log.e(TAG, "Failed to compress bitmap to PNG")
                                 bitmap.recycle()
@@ -606,14 +707,14 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                                 future.complete("error: Failed to compress screenshot to PNG format")
                                 return
                             }
-                            
+
                             val byteArray = byteArrayOutputStream.toByteArray()
                             val base64String = Base64.encodeToString(byteArray, Base64.NO_WRAP)
-                            
+
                             bitmap.recycle()
                             screenshotResult.hardwareBuffer.close()
                             byteArrayOutputStream.close()
-                            
+
                             future.complete(base64String)
                             Log.d(TAG, "Screenshot captured successfully, size: ${byteArray.size} bytes")
                         } catch (e: Exception) {
@@ -631,7 +732,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                             }
                         }
                     }
-                    
+
                     override fun onFailure(errorCode: Int) {
                         val errorMessage = when (errorCode) {
                             ERROR_TAKE_SCREENSHOT_INTERNAL_ERROR -> "Internal error occurred"
@@ -643,7 +744,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
                         }
                         Log.e(TAG, "Screenshot failed: $errorMessage")
                         future.complete("error: Screenshot failed: $errorMessage")
-                        
+
                         // Restore overlay drawing state
                         if (hideOverlay) {
                             overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled)
@@ -654,7 +755,7 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         } catch (e: Exception) {
             Log.e(TAG, "Error taking screenshot", e)
             future.complete("error: Failed to take screenshot: ${e.message}")
-            
+
             // Restore overlay drawing state in case of exception
             if (hideOverlay) {
                 overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled)

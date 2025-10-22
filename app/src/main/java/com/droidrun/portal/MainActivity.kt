@@ -1,7 +1,9 @@
 package com.droidrun.portal
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
@@ -27,9 +29,12 @@ import org.json.JSONObject
 import androidx.appcompat.app.AlertDialog
 import android.content.ClipboardManager
 import android.content.ClipData
+import android.os.Build
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 
 class MainActivity : AppCompatActivity() {
-    
+
     private lateinit var accessibilityBanner: com.google.android.material.card.MaterialCardView
     private lateinit var accessibilityStatusEnabled: com.google.android.material.card.MaterialCardView
     private lateinit var enableAccessibilityButton: MaterialButton
@@ -41,35 +46,38 @@ class MainActivity : AppCompatActivity() {
     private lateinit var offsetSlider: SeekBar
     private lateinit var offsetValueDisplay: TextInputEditText
     private lateinit var offsetValueInputLayout: TextInputLayout
-    
+
     // Socket server UI elements
     private lateinit var socketPortInput: TextInputEditText
     private lateinit var socketPortInputLayout: TextInputLayout
     private lateinit var socketServerStatus: TextView
     private lateinit var adbForwardCommand: TextView
-    
+
     // Endpoints collapsible section
     private lateinit var endpointsHeader: View
     private lateinit var endpointsContent: View
     private lateinit var endpointsArrow: ImageView
     private var isEndpointsExpanded = false
-    
+
     // Flag to prevent infinite update loops
     private var isProgrammaticUpdate = false
     private val mainHandler = Handler(Looper.getMainLooper())
-    
+
     // Constants for the position offset slider
     companion object {
         private const val DEFAULT_OFFSET = 0
         private const val MIN_OFFSET = -256
         private const val MAX_OFFSET = 256
         private const val SLIDER_RANGE = MAX_OFFSET - MIN_OFFSET
+
+        // Permission request code
+        private const val REQUEST_CODE_POST_NOTIFICATIONS = 1001
     }
-    
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        
+
         // Initialize UI elements
         accessibilityBanner = findViewById(R.id.accessibility_banner)
         accessibilityStatusEnabled = findViewById(R.id.accessibility_status_enabled)
@@ -81,31 +89,31 @@ class MainActivity : AppCompatActivity() {
         offsetSlider = findViewById(R.id.offset_slider)
         offsetValueDisplay = findViewById(R.id.offset_value_display)
         offsetValueInputLayout = findViewById(R.id.offset_value_input_layout)
-        
+
         // Initialize socket server UI elements
         socketPortInput = findViewById(R.id.socket_port_input)
         socketPortInputLayout = findViewById(R.id.socket_port_input_layout)
         socketServerStatus = findViewById(R.id.socket_server_status)
         adbForwardCommand = findViewById(R.id.adb_forward_command)
-        
+
         // Initialize endpoints collapsible section
         endpointsHeader = findViewById(R.id.endpoints_header)
         endpointsContent = findViewById(R.id.endpoints_content)
         endpointsArrow = findViewById(R.id.endpoints_arrow)
-        
+
         // Set app version
         setAppVersion()
-        
+
         // Configure the offset slider and input
         setupOffsetSlider()
         setupOffsetInput()
-        
+
         // Configure socket server controls
         setupSocketServerControls()
-        
+
         // Configure endpoints collapsible section
         setupEndpointsCollapsible()
-        
+
         fetchButton.setOnClickListener {
             fetchElementData()
         }
@@ -118,18 +126,62 @@ class MainActivity : AppCompatActivity() {
         enableAccessibilityButton.setOnClickListener {
             openAccessibilitySettings()
         }
-        
+
         // Setup logs link to show dialog
         logsLink.setOnClickListener {
             showLogsDialog()
         }
-        
+
+        // Request notification permission for Android 13+ (API 33+)
+        requestNotificationPermissionIfNeeded()
+
         // Check initial accessibility status and sync UI
         updateAccessibilityStatusIndicator()
         syncUIWithAccessibilityService()
         updateSocketServerStatus()
     }
-    
+
+    private fun requestNotificationPermissionIfNeeded() {
+        // Only request permission on Android 13+ (API 33+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                // Request the permission
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                    REQUEST_CODE_POST_NOTIFICATIONS
+                )
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+
+        when (requestCode) {
+            REQUEST_CODE_POST_NOTIFICATIONS -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.d("DROIDRUN_MAIN", "Notification permission granted")
+                } else {
+                    Log.w("DROIDRUN_MAIN", "Notification permission denied")
+                    Toast.makeText(
+                        this,
+                        "Notification permission is required for the accessibility service to run properly",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         // Update the accessibility status indicator when app resumes
@@ -137,7 +189,7 @@ class MainActivity : AppCompatActivity() {
         syncUIWithAccessibilityService()
         updateSocketServerStatus()
     }
-    
+
     private fun syncUIWithAccessibilityService() {
         val accessibilityService = DroidrunAccessibilityService.getInstance()
         if (accessibilityService != null) {
@@ -150,36 +202,36 @@ class MainActivity : AppCompatActivity() {
             updateOffsetInputField(displayOffset)
         }
     }
-    
+
     private fun setupOffsetSlider() {
         // Initialize the slider with the new range
         offsetSlider.max = SLIDER_RANGE
-        
+
         // Get initial value from service if available, otherwise use default
         val accessibilityService = DroidrunAccessibilityService.getInstance()
         val initialOffset = accessibilityService?.getOverlayOffset() ?: DEFAULT_OFFSET
-        
+
         // Convert the initial offset to slider position
         val initialSliderPosition = initialOffset - MIN_OFFSET
         offsetSlider.progress = initialSliderPosition
-        
+
         // Set listener for slider changes
         offsetSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                 // Convert slider position back to actual offset value (range -256 to +256)
                 val offsetValue = progress + MIN_OFFSET
-                
+
                 // Update input field to match slider (only when user is sliding)
                 if (fromUser) {
                     updateOffsetInputField(offsetValue)
                     updateOverlayOffset(offsetValue)
                 }
             }
-            
+
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
                 // Not needed
             }
-            
+
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 // Final update when user stops sliding
                 val offsetValue = seekBar?.progress?.plus(MIN_OFFSET) ?: DEFAULT_OFFSET
@@ -187,17 +239,17 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-    
+
     private fun setupOffsetInput() {
         // Get initial value from service if available, otherwise use default
         val accessibilityService = DroidrunAccessibilityService.getInstance()
         val initialOffset = accessibilityService?.getOverlayOffset() ?: DEFAULT_OFFSET
-        
+
         // Set initial value
         isProgrammaticUpdate = true
         offsetValueDisplay.setText(initialOffset.toString())
         isProgrammaticUpdate = false
-        
+
         // Apply on enter key
         offsetValueDisplay.setOnEditorActionListener { _, actionId, _ ->
             if (actionId == EditorInfo.IME_ACTION_DONE) {
@@ -207,17 +259,17 @@ class MainActivity : AppCompatActivity() {
                 false
             }
         }
-        
+
         // Input validation and auto-apply
         offsetValueDisplay.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
-            
+
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            
+
             override fun afterTextChanged(s: Editable?) {
                 // Skip processing if this is a programmatic update
                 if (isProgrammaticUpdate) return
-                
+
                 try {
                     val value = s.toString().toIntOrNull()
                     if (value != null) {
@@ -241,16 +293,16 @@ class MainActivity : AppCompatActivity() {
             }
         })
     }
-    
+
     private fun applyInputOffset() {
         try {
             val inputText = offsetValueDisplay.text.toString()
             val offsetValue = inputText.toIntOrNull()
-            
+
             if (offsetValue != null) {
                 // Ensure the value is within bounds
                 val boundedValue = offsetValue.coerceIn(MIN_OFFSET, MAX_OFFSET)
-                
+
                 if (boundedValue != offsetValue) {
                     // Update input if we had to bound the value
                     isProgrammaticUpdate = true
@@ -258,7 +310,7 @@ class MainActivity : AppCompatActivity() {
                     isProgrammaticUpdate = false
                     Toast.makeText(this, "Value adjusted to valid range", Toast.LENGTH_SHORT).show()
                 }
-                
+
                 // Update slider to match and apply the offset
                 val sliderPosition = boundedValue - MIN_OFFSET
                 offsetSlider.progress = sliderPosition
@@ -272,27 +324,27 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
-    
+
     private fun updateOffsetSlider(currentOffset: Int) {
         // Ensure the offset is within our new bounds
         val boundedOffset = currentOffset.coerceIn(MIN_OFFSET, MAX_OFFSET)
-        
+
         // Update the slider to match the current offset from the service
         val sliderPosition = boundedOffset - MIN_OFFSET
         offsetSlider.progress = sliderPosition
     }
-    
+
     private fun updateOffsetInputField(currentOffset: Int) {
         // Set flag to prevent TextWatcher from triggering
         isProgrammaticUpdate = true
-        
+
         // Update the text input to match the current offset
         offsetValueDisplay.setText(currentOffset.toString())
-        
+
         // Reset flag
         isProgrammaticUpdate = false
     }
-    
+
     private fun updateOverlayOffset(offsetValue: Int) {
         try {
             val accessibilityService = DroidrunAccessibilityService.getInstance()
@@ -310,12 +362,12 @@ class MainActivity : AppCompatActivity() {
             Log.e("DROIDRUN_MAIN", "Error updating offset: ${e.message}")
         }
     }
-    
+
     private fun fetchElementData() {
         try {
             // Use ContentProvider to get combined state (a11y tree + phone state)
             val uri = Uri.parse("content://com.droidrun.portal/state")
-            
+
             val cursor = contentResolver.query(
                 uri,
                 null,
@@ -323,17 +375,17 @@ class MainActivity : AppCompatActivity() {
                 null,
                 null
             )
-            
+
             cursor?.use {
                 if (it.moveToFirst()) {
                     val result = it.getString(0)
                     val jsonResponse = JSONObject(result)
-                    
+
                     if (jsonResponse.getString("status") == "success") {
                         val data = jsonResponse.getString("data")
                         responseText = data
                         Toast.makeText(this, "Combined state received successfully!", Toast.LENGTH_SHORT).show()
-                        
+
                         Log.d("DROIDRUN_MAIN", "Combined state data received: ${data.substring(0, Math.min(100, data.length))}...")
                     } else {
                         val error = jsonResponse.getString("error")
@@ -342,13 +394,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            
+
         } catch (e: Exception) {
             Log.e("DROIDRUN_MAIN", "Error fetching combined state data: ${e.message}")
             Toast.makeText(this, "Error fetching data: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
-    
+
     private fun toggleOverlayVisibility(visible: Boolean) {
         try {
             val accessibilityService = DroidrunAccessibilityService.getInstance()
@@ -374,7 +426,7 @@ class MainActivity : AppCompatActivity() {
             val command = JSONObject().apply {
                 put("action", "phone_state")
             }
-            
+
             val cursor = contentResolver.query(
                 uri,
                 null,
@@ -382,17 +434,17 @@ class MainActivity : AppCompatActivity() {
                 null,
                 null
             )
-            
+
             cursor?.use {
                 if (it.moveToFirst()) {
                     val result = it.getString(0)
                     val jsonResponse = JSONObject(result)
-                    
+
                     if (jsonResponse.getString("status") == "success") {
                         val data = jsonResponse.getString("data")
                         // responseText.text = data
                         Toast.makeText(this, "Phone state received successfully!", Toast.LENGTH_SHORT).show()
-                        
+
                         Log.d("DROIDRUN_MAIN", "Phone state received: ${data.substring(0, Math.min(100, data.length))}...")
                     } else {
                         val error = jsonResponse.getString("error")
@@ -401,34 +453,34 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            
+
         } catch (e: Exception) {
             Log.e("DROIDRUN_MAIN", "Error fetching phone state: ${e.message}")
             Toast.makeText(this, "Error fetching phone state: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
-    
+
     // Check if the accessibility service is enabled
     private fun isAccessibilityServiceEnabled(): Boolean {
         val accessibilityServiceName = packageName + "/" + DroidrunAccessibilityService::class.java.canonicalName
-        
+
         try {
             val enabledServices = Settings.Secure.getString(
                 contentResolver,
                 Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
             )
-            
+
             return enabledServices?.contains(accessibilityServiceName) == true
         } catch (e: Exception) {
             Log.e("DROIDRUN_MAIN", "Error checking accessibility status: ${e.message}")
             return false
         }
     }
-    
+
     // Update the accessibility status indicator based on service status
     private fun updateAccessibilityStatusIndicator() {
         val isEnabled = isAccessibilityServiceEnabled()
-        
+
         if (isEnabled) {
             // Show enabled card, hide banner
             accessibilityStatusEnabled.visibility = View.VISIBLE
@@ -439,7 +491,7 @@ class MainActivity : AppCompatActivity() {
             accessibilityBanner.visibility = View.VISIBLE
         }
     }
-    
+
     // Open accessibility settings to enable the service
     private fun openAccessibilitySettings() {
         try {
@@ -463,20 +515,20 @@ class MainActivity : AppCompatActivity() {
     private fun setupSocketServerControls() {
         // Initialize with ConfigManager values
         val configManager = ConfigManager.getInstance(this)
-        
+
         // Set default port value
         isProgrammaticUpdate = true
         socketPortInput.setText(configManager.socketServerPort.toString())
         isProgrammaticUpdate = false
-        
+
         // Port input listener
         socketPortInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
-            
+
             override fun afterTextChanged(s: Editable?) {
                 if (isProgrammaticUpdate) return
-                
+
                 try {
                     val portText = s.toString()
                     if (portText.isNotEmpty()) {
@@ -495,32 +547,32 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         })
-        
+
         // Update initial UI state
         updateSocketServerStatus()
         updateAdbForwardCommand()
     }
-    
 
-    
+
+
     private fun updateSocketServerPort(port: Int) {
         try {
             val configManager = ConfigManager.getInstance(this)
             configManager.setSocketServerPortWithNotification(port)
-            
+
             updateAdbForwardCommand()
-            
+
             // Give the server a moment to restart, then update the status
             mainHandler.postDelayed({
                 updateSocketServerStatus()
             }, 1000)
-            
+
             Log.d("DROIDRUN_MAIN", "Socket server port updated: $port")
         } catch (e: Exception) {
             Log.e("DROIDRUN_MAIN", "Error updating socket server port: ${e.message}")
         }
     }
-    
+
     private fun updateSocketServerStatus() {
         try {
             val accessibilityService = DroidrunAccessibilityService.getInstance()
@@ -536,7 +588,7 @@ class MainActivity : AppCompatActivity() {
             socketServerStatus.text = "Error"
         }
     }
-    
+
     private fun updateAdbForwardCommand() {
         try {
             val accessibilityService = DroidrunAccessibilityService.getInstance()
@@ -557,7 +609,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupEndpointsCollapsible() {
         endpointsHeader.setOnClickListener {
             isEndpointsExpanded = !isEndpointsExpanded
-            
+
             if (isEndpointsExpanded) {
                 endpointsContent.visibility = View.VISIBLE
                 endpointsArrow.rotation = 90f
@@ -578,11 +630,11 @@ class MainActivity : AppCompatActivity() {
             versionText.text = "Version: N/A"
         }
     }
-    
+
     private fun showLogsDialog() {
         try {
             val dialogView = layoutInflater.inflate(android.R.layout.select_dialog_item, null)
-            
+
             // Create a scrollable TextView for the logs
             val scrollView = androidx.core.widget.NestedScrollView(this)
             val textView = TextView(this).apply {
@@ -593,7 +645,7 @@ class MainActivity : AppCompatActivity() {
                 setTextIsSelectable(true)
             }
             scrollView.addView(textView)
-            
+
             AlertDialog.Builder(this)
                 .setTitle("Response Logs")
                 .setView(scrollView)
@@ -616,4 +668,4 @@ class MainActivity : AppCompatActivity() {
             Toast.makeText(this, "Error showing logs: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
-} 
+}
