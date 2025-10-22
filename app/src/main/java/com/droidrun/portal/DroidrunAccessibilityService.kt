@@ -53,71 +53,83 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         // NOTE: Accessibility Service should NOT call startForeground()
         // It is managed by the system and doesn't need foreground notification
 
-        overlayManager = OverlayManager(this)
-        val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-
-        // Get screen bounds compatible with Android 10+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val windowMetrics = windowManager.currentWindowMetrics
-            val bounds = windowMetrics.bounds
-            screenBounds.set(0, 0, bounds.width(), bounds.height())
-        } else {
-            // Fallback for Android 10 (API 29)
-            @Suppress("DEPRECATION")
-            val display = windowManager.defaultDisplay
-            val displayMetrics = android.util.DisplayMetrics()
-            @Suppress("DEPRECATION")
-            display.getRealMetrics(displayMetrics)
-            screenBounds.set(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
-        }
-
-        // Initialize ConfigManager
-        configManager = ConfigManager.getInstance(this)
-        configManager.addListener(this)
-
-        // Initialize SocketServer
-        socketServer = SocketServer(this)
-
-        isInitialized = true
+        Log.d(TAG, "onCreate() called")
     }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        overlayManager.showOverlay()
-        instance = this
+        Log.d(TAG, "onServiceConnected() called")
 
-        // Configure accessibility service
-        serviceInfo = AccessibilityServiceInfo().apply {
-            // Listen to all events
-            eventTypes = AccessibilityEvent.TYPES_ALL_MASK
+        try {
+            // Initialize OverlayManager
+            overlayManager = OverlayManager(this)
 
-            // Monitor all packages
-            packageNames = null
-
-            // Set feedback type
-            feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-
-            // Set flags for better access
-            flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
-                    AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
-                    AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
-
-            // Enable screenshot capability (API 34+)
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_2_FINGER_PASSTHROUGH
+            // Get screen bounds compatible with Android 10+
+            val windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val windowMetrics = windowManager.currentWindowMetrics
+                val bounds = windowMetrics.bounds
+                screenBounds.set(0, 0, bounds.width(), bounds.height())
+            } else {
+                // Fallback for Android 10 (API 29)
+                @Suppress("DEPRECATION")
+                val display = windowManager.defaultDisplay
+                val displayMetrics = android.util.DisplayMetrics()
+                @Suppress("DEPRECATION")
+                display.getRealMetrics(displayMetrics)
+                screenBounds.set(0, 0, displayMetrics.widthPixels, displayMetrics.heightPixels)
             }
+
+            // Initialize ConfigManager
+            configManager = ConfigManager.getInstance(this)
+            configManager.addListener(this)
+
+            // Initialize SocketServer
+            socketServer = SocketServer(this)
+
+            isInitialized = true
+
+            // Show overlay
+            overlayManager.showOverlay()
+            instance = this
+
+            // Configure accessibility service
+            serviceInfo = AccessibilityServiceInfo().apply {
+                // Listen to all events
+                eventTypes = AccessibilityEvent.TYPES_ALL_MASK
+
+                // Monitor all packages
+                packageNames = null
+
+                // Set feedback type
+                feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
+
+                // Set flags for better access
+                flags = AccessibilityServiceInfo.FLAG_REPORT_VIEW_IDS or
+                        AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS or
+                        AccessibilityServiceInfo.FLAG_REQUEST_TOUCH_EXPLORATION_MODE
+
+                // Enable screenshot capability (API 34+)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_2_FINGER_PASSTHROUGH
+                }
+            }
+
+            // Apply loaded configuration
+            applyConfiguration()
+
+            // Start periodic updates
+            startPeriodicUpdates()
+
+            // Start socket server if enabled
+            startSocketServerIfEnabled()
+
+            Log.d(TAG, "Accessibility service connected and configured")
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onServiceConnected: ${e.message}", e)
+            e.printStackTrace()
         }
-
-        // Apply loaded configuration
-        applyConfiguration()
-
-        // Start periodic updates
-        startPeriodicUpdates()
-
-        // Start socket server if enabled
-        startSocketServerIfEnabled()
-
-        Log.d(TAG, "Accessibility service connected and configured")
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -257,6 +269,11 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
 
     // Public methods for MainActivity to call directly
     fun setOverlayVisible(visible: Boolean): Boolean {
+        if (!isInitialized) {
+            Log.w(TAG, "Service not initialized yet")
+            return false
+        }
+
         return try {
             configManager.overlayVisible = visible
 
@@ -278,9 +295,17 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         }
     }
 
-    fun isOverlayVisible(): Boolean = configManager.overlayVisible
+    fun isOverlayVisible(): Boolean {
+        if (!isInitialized) return false
+        return configManager.overlayVisible
+    }
 
     fun setOverlayOffset(offset: Int): Boolean {
+        if (!isInitialized) {
+            Log.w(TAG, "Service not initialized yet")
+            return false
+        }
+
         return try {
             configManager.overlayOffset = offset
 
@@ -296,11 +321,22 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         }
     }
 
-    fun getOverlayOffset(): Int = configManager.overlayOffset
+    fun getOverlayOffset(): Int {
+        if (!isInitialized) return 0
+        return configManager.overlayOffset
+    }
 
-    fun getCurrentAppliedOffset(): Int = overlayManager.getPositionOffsetY()
+    fun getCurrentAppliedOffset(): Int {
+        if (!isInitialized) return 0
+        return overlayManager.getPositionOffsetY()
+    }
 
     fun setAutoOffsetEnabled(enabled: Boolean): Boolean {
+        if (!isInitialized) {
+            Log.w(TAG, "Service not initialized yet")
+            return false
+        }
+
         return try {
             if (!enabled) {
                 // When disabling auto-offset, save the current applied offset
@@ -328,7 +364,10 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         }
     }
 
-    fun isAutoOffsetEnabled(): Boolean = configManager.autoOffsetEnabled
+    fun isAutoOffsetEnabled(): Boolean {
+        if (!isInitialized) return false
+        return configManager.autoOffsetEnabled
+    }
 
     fun getVisibleElements(): MutableList<ElementNode> {
         return getVisibleElementsInternal()
@@ -504,6 +543,8 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     }
 
     fun getSocketServerStatus(): String {
+        if (!isInitialized) return "Service not initialized"
+
         return socketServer?.let { server ->
             if (server.isRunning()) {
                 "Running on port ${server.getPort()}"
@@ -514,6 +555,8 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     }
 
     fun getAdbForwardCommand(): String {
+        if (!isInitialized) return "Service not initialized"
+
         val port = configManager.socketServerPort
         return "adb forward tcp:$port tcp:$port"
     }
