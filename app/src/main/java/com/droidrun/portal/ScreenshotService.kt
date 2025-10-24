@@ -89,22 +89,18 @@ class ScreenshotService : Service() {
         try {
             // Initialize MediaProjection if not already done
             if (mediaProjection == null) {
-                // Try to create MediaProjection
+                // Must have resultData from dialog to create MediaProjection
                 if (resultData != null && resultCode != 0) {
                     Log.d(TAG, "Creating MediaProjection with dialog token")
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData!!)
                 } else {
-                    // Try to create without token
-                    Log.d(TAG, "Attempting to create MediaProjection without token")
-                    try {
-                        mediaProjection = mediaProjectionManager.getMediaProjection(-1, null)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Failed to create MediaProjection without token: ${e.message}")
-                    }
+                    Log.e(TAG, "No MediaProjection token available")
+                    future.complete("error: No MediaProjection token. Please call /screenshot/launch_permission_dialog first to grant permission.")
+                    return future
                 }
 
                 if (mediaProjection == null) {
-                    future.complete("error: Failed to create MediaProjection. You may need to call /screenshot/launch_permission_dialog first to grant permission.")
+                    future.complete("error: Failed to create MediaProjection.")
                     return future
                 }
             }
