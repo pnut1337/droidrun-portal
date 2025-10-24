@@ -32,22 +32,22 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
 
         this.port = port
         Log.i(TAG, "Starting socket server on port $port...")
-        
+
         return try {
             // Create a new executor service for this server instance
             executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE)
-            
+
             serverSocket = ServerSocket(port)
             isRunning.set(true)
-            
+
             Log.i(TAG, "ServerSocket created successfully on port $port")
-            
+
             // Start accepting connections in background
             executorService?.submit {
                 Log.i(TAG, "Starting connection acceptor thread")
                 acceptConnections()
             }
-            
+
             Log.i(TAG, "Socket server started successfully on port $port")
             true
         } catch (e: Exception) {
@@ -63,7 +63,7 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
         if (!isRunning.get()) return
 
         isRunning.set(false)
-        
+
         try {
             serverSocket?.close()
             executorService?.shutdown()
@@ -111,14 +111,14 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
                 // Read HTTP request line
                 val requestLine = reader.readLine()
                 Log.d(TAG, "Request line: $requestLine")
-                
+
                 if (requestLine == null) {
                     Log.w(TAG, "No request line received")
                     return
                 }
-                
+
                 val parts = requestLine.split(" ")
-                
+
                 if (parts.size < 2) {
                     Log.w(TAG, "Invalid request line format: $requestLine")
                     sendErrorResponse(writer, 400, "Bad Request")
@@ -178,6 +178,14 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
             path.startsWith("/ping") -> {
                 Log.d(TAG, "Processing /ping request")
                 createSuccessResponse("pong")
+            }
+            path.startsWith("/screenshot/request_permission") -> {
+                Log.d(TAG, "Processing /screenshot/request_permission request")
+                requestScreenshotPermission()
+            }
+            path.startsWith("/screenshot/permission_status") -> {
+                Log.d(TAG, "Processing /screenshot/permission_status request")
+                getScreenshotPermissionStatus()
             }
             path.startsWith("/screenshot") -> {
                 Log.d(TAG, "Processing /screenshot request")
@@ -243,11 +251,11 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
             }
 
             val values = parsePostData(postData.toString())
-            val offset = values.getAsInteger("offset") 
+            val offset = values.getAsInteger("offset")
                 ?: return "error: No offset provided"
 
             val success = accessibilityService.setOverlayOffset(offset)
-            
+
             if (success) {
                 "success: Overlay offset updated to $offset"
             } else {
@@ -261,7 +269,7 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
 
     private fun parsePostData(data: String): ContentValues {
         val values = ContentValues()
-        
+
         if (data.isBlank()) return values
 
         try {
@@ -284,7 +292,7 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
                     if (parts.size == 2) {
                         val key = Uri.decode(parts[0])
                         val value = Uri.decode(parts[1])
-                        
+
                         // Try to parse as integer
                         val intValue = value.toIntOrNull()
                         if (intValue != null) {
@@ -353,7 +361,7 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
             Log.d(TAG, "Getting accessibility tree...")
             val elements = accessibilityService.getVisibleElements()
             Log.d(TAG, "Found ${elements.size} visible elements")
-            
+
             val treeJson = elements.map { element ->
                 buildElementNodeJson(element)
             }
@@ -385,20 +393,79 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
             val treeJson = accessibilityService.getVisibleElements().map { element ->
                 buildElementNodeJson(element)
             }
-            
+
             // Get phone state
             val phoneStateJson = buildPhoneStateJson(accessibilityService.getPhoneState())
-            
+
             // Combine both in a single response
             val combinedState = JSONObject().apply {
                 put("a11y_tree", org.json.JSONArray(treeJson))
                 put("phone_state", phoneStateJson)
             }
-            
+
             createSuccessResponse(combinedState.toString())
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get combined state", e)
             createErrorResponse("Failed to get combined state: ${e.message}")
+        }
+    }
+
+    private fun requestScreenshotPermission(): String {
+        return try {
+            Log.d(TAG, "Requesting screenshot permission via MediaProjection")
+
+            // Check Android version
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+ uses Accessibility Screenshot API directly
+                return createSuccessResponse("Android 14+ detected - no additional permission needed. Screenshot API available directly.")
+            }
+
+            // For Android 10-13, launch the permission activity
+            val intent = android.content.Intent(accessibilityService, ScreenshotPermissionActivity::class.java)
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            accessibilityService.startActivity(intent)
+
+            createSuccessResponse("Screenshot permission request initiated. Please grant MediaProjection permission in the dialog.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to request screenshot permission", e)
+            createErrorResponse("Failed to request screenshot permission: ${e.message}")
+        }
+    }
+
+    private fun getScreenshotPermissionStatus(): String {
+        return try {
+            val androidVersion = android.os.Build.VERSION.SDK_INT
+            val versionName = android.os.Build.VERSION.RELEASE
+
+            val status = if (androidVersion >= android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+
+                JSONObject().apply {
+                    put("hasPermission", true)
+                    put("method", "Accessibility Screenshot API")
+                    put("androidVersion", versionName)
+                    put("sdkInt", androidVersion)
+                    put("message", "Android 14+ detected - using native Accessibility Screenshot API")
+                }
+            } else {
+                // Android 10-13
+                val hasPermission = ScreenshotService.hasMediaProjectionPermission()
+                JSONObject().apply {
+                    put("hasPermission", hasPermission)
+                    put("method", "MediaProjection API")
+                    put("androidVersion", versionName)
+                    put("sdkInt", androidVersion)
+                    if (hasPermission) {
+                        put("message", "MediaProjection permission granted")
+                    } else {
+                        put("message", "MediaProjection permission not granted. Please call /screenshot/request_permission first.")
+                    }
+                }
+            }
+
+            createSuccessResponse(status.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get screenshot permission status", e)
+            createErrorResponse("Failed to get screenshot permission status: ${e.message}")
         }
     }
 
@@ -420,13 +487,13 @@ class SocketServer(private val accessibilityService: DroidrunAccessibilityServic
             } else {
                 true // Default: hide overlay
             }
-            
+
             Log.d(TAG, "Taking screenshot... (hideOverlay: $hideOverlay)")
             val screenshotFuture = accessibilityService.takeScreenshotBase64(hideOverlay)
-            
+
             // Wait for screenshot with timeout (5 seconds)
             val screenshotBase64 = screenshotFuture.get(5, java.util.concurrent.TimeUnit.SECONDS)
-            
+
             if (screenshotBase64.startsWith("error:")) {
                 Log.e(TAG, "Screenshot failed: $screenshotBase64")
                 createErrorResponse(screenshotBase64.substring(7)) // Remove "error:" prefix

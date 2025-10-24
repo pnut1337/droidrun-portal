@@ -618,14 +618,6 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
     fun takeScreenshotBase64(hideOverlay: Boolean = true): CompletableFuture<String> {
         val future = CompletableFuture<String>()
 
-        // Check if screenshot API is supported (API 34+)
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val errorMsg = "error: Screenshot API is only available on Android 14+ (API 34+). Current version: ${Build.VERSION.SDK_INT}"
-            Log.e(TAG, errorMsg)
-            future.complete(errorMsg)
-            return future
-        }
-
         // Temporarily hide overlay if requested
         val wasOverlayDrawingEnabled = if (hideOverlay) {
             val enabled = overlayManager.isDrawingEnabled()
@@ -639,10 +631,20 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
             if (hideOverlay) {
                 // Small delay to ensure overlay is hidden before screenshot
                 mainHandler.postDelayed({
-                    performScreenshotCapture(future, wasOverlayDrawingEnabled, hideOverlay)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        // Use Accessibility Screenshot API for Android 14+
+                        performScreenshotCapture(future, wasOverlayDrawingEnabled, hideOverlay)
+                    } else {
+                        // Use shell command fallback for Android 10-13
+                        performScreenshotViaShell(future, wasOverlayDrawingEnabled, hideOverlay)
+                    }
                 }, 100)
             } else {
-                performScreenshotCapture(future, wasOverlayDrawingEnabled, hideOverlay)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    performScreenshotCapture(future, wasOverlayDrawingEnabled, hideOverlay)
+                } else {
+                    performScreenshotViaShell(future, wasOverlayDrawingEnabled, hideOverlay)
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error taking screenshot", e)
@@ -655,6 +657,61 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         }
 
         return future
+    }
+
+    private fun performScreenshotViaShell(future: CompletableFuture<String>, wasOverlayDrawingEnabled: Boolean, hideOverlay: Boolean) {
+        // Use MediaProjection for Android 10-13 to bypass FLAG_SECURE
+        try {
+            Log.d(TAG, "Taking screenshot via MediaProjection (Android ${Build.VERSION.SDK_INT})")
+
+            val screenshotService = ScreenshotService.getInstance()
+
+            if (screenshotService == null) {
+                Log.e(TAG, "ScreenshotService not available")
+                future.complete("error: ScreenshotService not available. Please start the service first.")
+                if (hideOverlay) {
+                    mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
+                }
+                return
+            }
+
+            if (!ScreenshotService.hasMediaProjectionPermission()) {
+                Log.e(TAG, "MediaProjection permission not granted")
+                future.complete("error: MediaProjection permission not granted. Please request permission via /screenshot/request_permission endpoint.")
+                if (hideOverlay) {
+                    mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
+                }
+                return
+            }
+
+            // Take screenshot using MediaProjection
+            val screenshotFuture = screenshotService.takeScreenshotBase64()
+
+            // Wait for the screenshot to complete
+            Thread {
+                try {
+                    val result = screenshotFuture.get(5, java.util.concurrent.TimeUnit.SECONDS)
+                    future.complete(result)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error waiting for screenshot", e)
+                    future.complete("error: Failed to capture screenshot: ${e.message}")
+                } finally {
+                    // Restore overlay drawing state
+                    if (hideOverlay) {
+                        mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
+                    }
+                }
+            }.start()
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error taking screenshot via MediaProjection", e)
+            future.complete("error: Failed to take screenshot via MediaProjection: ${e.message}")
+
+            // Restore overlay drawing state
+            if (hideOverlay) {
+                mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
+            }
+        }
     }
 
     private fun performScreenshotCapture(future: CompletableFuture<String>, wasOverlayDrawingEnabled: Boolean, hideOverlay: Boolean) {

@@ -12,6 +12,16 @@
     <!-- Post notifications permission for Android 13+ (API 33+) - Optional for user notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Storage permissions for screenshot file access (Android 10-12) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Foreground service permissions for MediaProjection (Android 10+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
+
     <!-- Define a custom permission for secure broadcast communication -->
     <permission
         android:name="com.droidrun.portal.SEND_INPUT_DATA"
@@ -80,6 +90,24 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ScreenshotPermissionActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="com.droidrun.portal.REQUEST_SCREENSHOT_PERMISSION" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".ScreenshotService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection">
+        </service>
 
     </application>
 
