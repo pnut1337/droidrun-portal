@@ -671,16 +671,6 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         try {
             Log.d(TAG, "Taking screenshot via MediaProjection (Android ${Build.VERSION.SDK_INT})")
 
-            // Check if MediaProjection permission is granted first
-            if (!ScreenshotService.hasMediaProjectionPermission()) {
-                Log.w(TAG, "MediaProjection permission not granted yet")
-                future.complete("error: MediaProjection permission not granted. Please request permission first by calling GET /screenshot/request_permission, then grant the permission in the dialog that appears.")
-                if (hideOverlay) {
-                    mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
-                }
-                return
-            }
-
             // Get or start ScreenshotService
             var screenshotService = ScreenshotService.getInstance()
 

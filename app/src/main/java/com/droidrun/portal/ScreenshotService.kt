@@ -86,28 +86,25 @@ class ScreenshotService : Service() {
     fun takeScreenshotBase64(): CompletableFuture<String> {
         val future = CompletableFuture<String>()
 
-        if (!hasMediaProjectionPermission()) {
-            future.complete("error: MediaProjection permission not granted. Please request permission first.")
-            return future
-        }
-
         try {
             // Initialize MediaProjection if not already done
             if (mediaProjection == null) {
-                // If we have resultData from dialog, use it
+                // Try to create MediaProjection
                 if (resultData != null && resultCode != 0) {
+                    Log.d(TAG, "Creating MediaProjection with dialog token")
                     mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData!!)
                 } else {
-                    // Permission granted via appops - create MediaProjection without user consent
-                    // This requires calling the permission dialog at least once to get the token
-                    // For appops-only permission, we need to use a workaround
-                    Log.w(TAG, "Permission granted via appops but no MediaProjection token available")
-                    future.complete("error: MediaProjection requires initial permission dialog. Please call /screenshot/launch_permission_dialog once to initialize, then you can use appops for subsequent sessions.")
-                    return future
+                    // Try to create without token
+                    Log.d(TAG, "Attempting to create MediaProjection without token")
+                    try {
+                        mediaProjection = mediaProjectionManager.getMediaProjection(-1, null)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to create MediaProjection without token: ${e.message}")
+                    }
                 }
 
                 if (mediaProjection == null) {
-                    future.complete("error: Failed to create MediaProjection")
+                    future.complete("error: Failed to create MediaProjection. You may need to call /screenshot/launch_permission_dialog first to grant permission.")
                     return future
                 }
             }
