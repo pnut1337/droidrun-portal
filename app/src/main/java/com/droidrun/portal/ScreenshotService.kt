@@ -217,41 +217,55 @@ class ScreenshotService : Service() {
                 return
             }
 
-            // Wait a bit for the display to render
-            mainHandler.postDelayed({
-                try {
-                    val image = imageReader.acquireLatestImage()
+            // Wait longer and retry if needed for the display to render
+            var retryCount = 0
+            val maxRetries = 5
 
-                    if (image == null) {
-                        Log.e(TAG, "Failed to acquire image")
+            fun tryAcquireImage() {
+                mainHandler.postDelayed({
+                    try {
+                        val image = imageReader.acquireLatestImage()
+
+                        if (image == null) {
+                            retryCount++
+                            if (retryCount < maxRetries) {
+                                Log.d(TAG, "Image not ready, retry $retryCount/$maxRetries")
+                                tryAcquireImage() // Retry
+                                return@postDelayed
+                            } else {
+                                Log.e(TAG, "Failed to acquire image after $maxRetries retries")
+                                virtualDisplay.release()
+                                imageReader.close()
+                                future.complete("error: Failed to acquire image from screen after $maxRetries attempts. VirtualDisplay may not be rendering.")
+                                return@postDelayed
+                            }
+                        }
+
+                        // Convert image to bitmap
+                        val bitmap = imageToBitmap(image, width, height)
+                        image.close()
+
+                        // Convert bitmap to base64
+                        val base64String = bitmapToBase64(bitmap)
+                        bitmap.recycle()
+
+                        // Cleanup
                         virtualDisplay.release()
                         imageReader.close()
-                        future.complete("error: Failed to acquire image from screen")
-                        return@postDelayed
+
+                        Log.d(TAG, "Screenshot captured successfully via MediaProjection")
+                        future.complete(base64String)
+
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error processing screenshot", e)
+                        virtualDisplay.release()
+                        imageReader.close()
+                        future.complete("error: Failed to process screenshot: ${e.message}")
                     }
+                }, if (retryCount == 0) 300 else 200) // First delay 300ms, then 200ms per retry
+            }
 
-                    // Convert image to bitmap
-                    val bitmap = imageToBitmap(image, width, height)
-                    image.close()
-
-                    // Convert bitmap to base64
-                    val base64String = bitmapToBase64(bitmap)
-                    bitmap.recycle()
-
-                    // Cleanup
-                    virtualDisplay.release()
-                    imageReader.close()
-
-                    Log.d(TAG, "Screenshot captured successfully via MediaProjection")
-                    future.complete(base64String)
-
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error processing screenshot", e)
-                    virtualDisplay.release()
-                    imageReader.close()
-                    future.complete("error: Failed to process screenshot: ${e.message}")
-                }
-            }, 100) // Small delay to ensure screen is rendered
+            tryAcquireImage()
 
         } catch (e: Exception) {
             Log.e(TAG, "Error capturing screen", e)
