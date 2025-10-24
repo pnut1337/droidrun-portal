@@ -80,7 +80,59 @@ class ScreenshotService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "ScreenshotService started")
+
+        // Start as foreground service with notification
+        startForegroundServiceWithNotification()
+
         return START_STICKY
+    }
+
+    private fun startForegroundServiceWithNotification() {
+        val channelId = "screenshot_service_channel"
+        val notificationId = 2001
+
+        // Create notification channel for Android 8.0+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = android.app.NotificationChannel(
+                channelId,
+                "Screenshot Service",
+                android.app.NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Handles screenshot capture via MediaProjection"
+            }
+
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+
+        // Create notification
+        val notification = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            android.app.Notification.Builder(this, channelId)
+                .setContentTitle("Droidrun Screenshot Service")
+                .setContentText("Ready to capture screenshots")
+                .setSmallIcon(android.R.drawable.ic_menu_camera)
+                .build()
+        } else {
+            @Suppress("DEPRECATION")
+            android.app.Notification.Builder(this)
+                .setContentTitle("Droidrun Screenshot Service")
+                .setContentText("Ready to capture screenshots")
+                .setSmallIcon(android.R.drawable.ic_menu_camera)
+                .build()
+        }
+
+        // Start foreground with FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                notificationId,
+                notification,
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
+        } else {
+            startForeground(notificationId, notification)
+        }
+
+        Log.d(TAG, "ScreenshotService running as foreground service")
     }
 
     fun takeScreenshotBase64(): CompletableFuture<String> {
