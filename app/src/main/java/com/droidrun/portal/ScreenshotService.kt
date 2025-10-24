@@ -196,7 +196,8 @@ class ScreenshotService : Service() {
 
             Log.d(TAG, "Screen dimensions: ${width}x${height}, density: $density")
 
-            // Create ImageReader
+            // Create ImageReader with best available pixel format
+            // Use RGBA_8888 for compatibility (hardware will handle color space)
             val imageReader = ImageReader.newInstance(width, height, PixelFormat.RGBA_8888, 2)
 
             // Create VirtualDisplay
@@ -280,11 +281,26 @@ class ScreenshotService : Service() {
         val rowStride = planes[0].rowStride
         val rowPadding = rowStride - pixelStride * width
 
-        val bitmap = Bitmap.createBitmap(
-            width + rowPadding / pixelStride,
-            height,
-            Bitmap.Config.ARGB_8888
-        )
+        // Create bitmap with ARGB_8888 and explicit sRGB color space
+        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Android 8.0+ - explicitly set sRGB color space
+            Bitmap.createBitmap(
+                width + rowPadding / pixelStride,
+                height,
+                Bitmap.Config.ARGB_8888,
+                true, // hasAlpha
+                android.graphics.ColorSpace.get(android.graphics.ColorSpace.Named.SRGB)
+            )
+        } else {
+            // Android 7.1 and below - defaults to sRGB
+            Bitmap.createBitmap(
+                width + rowPadding / pixelStride,
+                height,
+                Bitmap.Config.ARGB_8888
+            )
+        }
+
+        // Copy pixel data
         bitmap.copyPixelsFromBuffer(buffer)
 
         return if (rowPadding == 0) {
