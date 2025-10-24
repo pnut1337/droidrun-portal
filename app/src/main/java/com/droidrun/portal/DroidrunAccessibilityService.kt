@@ -87,6 +87,13 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
             // Initialize SocketServer
             socketServer = SocketServer(this)
 
+            // Start ScreenshotService for Android 10-13
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val screenshotServiceIntent = android.content.Intent(this, ScreenshotService::class.java)
+                startService(screenshotServiceIntent)
+                Log.d(TAG, "ScreenshotService started for Android ${Build.VERSION.SDK_INT}")
+            }
+
             isInitialized = true
 
             // Show overlay
@@ -664,24 +671,37 @@ class DroidrunAccessibilityService : AccessibilityService(), ConfigManager.Confi
         try {
             Log.d(TAG, "Taking screenshot via MediaProjection (Android ${Build.VERSION.SDK_INT})")
 
-            val screenshotService = ScreenshotService.getInstance()
-
-            if (screenshotService == null) {
-                Log.e(TAG, "ScreenshotService not available")
-                future.complete("error: ScreenshotService not available. Please start the service first.")
+            // Check if MediaProjection permission is granted first
+            if (!ScreenshotService.hasMediaProjectionPermission()) {
+                Log.w(TAG, "MediaProjection permission not granted yet")
+                future.complete("error: MediaProjection permission not granted. Please request permission first by calling GET /screenshot/request_permission, then grant the permission in the dialog that appears.")
                 if (hideOverlay) {
                     mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
                 }
                 return
             }
 
-            if (!ScreenshotService.hasMediaProjectionPermission()) {
-                Log.e(TAG, "MediaProjection permission not granted")
-                future.complete("error: MediaProjection permission not granted. Please request permission via /screenshot/request_permission endpoint.")
-                if (hideOverlay) {
-                    mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
+            // Get or start ScreenshotService
+            var screenshotService = ScreenshotService.getInstance()
+
+            if (screenshotService == null) {
+                Log.d(TAG, "ScreenshotService not available, starting service...")
+                // Try to start the service
+                val screenshotServiceIntent = android.content.Intent(this, ScreenshotService::class.java)
+                startService(screenshotServiceIntent)
+
+                // Wait a bit for service to start
+                Thread.sleep(500)
+                screenshotService = ScreenshotService.getInstance()
+
+                if (screenshotService == null) {
+                    Log.e(TAG, "ScreenshotService failed to start")
+                    future.complete("error: ScreenshotService failed to start. Please try again.")
+                    if (hideOverlay) {
+                        mainHandler.post { overlayManager.setDrawingEnabled(wasOverlayDrawingEnabled) }
+                    }
+                    return
                 }
-                return
             }
 
             // Take screenshot using MediaProjection
