@@ -34,6 +34,9 @@ class DroidrunContentProvider : ContentProvider() {
         private const val STATE = 5
         private const val OVERLAY_OFFSET = 6
         private const val PACKAGES = 7
+        private const val SCREENSHOT = 8
+        private const val SCREENSHOT_PERMISSION_STATUS = 9
+        private const val SCREENSHOT_LAUNCH_DIALOG = 10
 
         private val uriMatcher = UriMatcher(UriMatcher.NO_MATCH).apply {
             addURI(AUTHORITY, "a11y_tree", A11Y_TREE)
@@ -42,7 +45,10 @@ class DroidrunContentProvider : ContentProvider() {
             addURI(AUTHORITY, "keyboard/*", KEYBOARD_ACTIONS)
             addURI(AUTHORITY, "state", STATE)
             addURI(AUTHORITY, "overlay_offset", OVERLAY_OFFSET)
-            addURI(AUTHORITY, "packages", PACKAGES) // <-- new endpoint
+            addURI(AUTHORITY, "packages", PACKAGES)
+            addURI(AUTHORITY, "screenshot", SCREENSHOT)
+            addURI(AUTHORITY, "screenshot/permission_status", SCREENSHOT_PERMISSION_STATUS)
+            addURI(AUTHORITY, "screenshot/launch_permission_dialog", SCREENSHOT_LAUNCH_DIALOG)
         }
     }
 
@@ -59,7 +65,7 @@ class DroidrunContentProvider : ContentProvider() {
         sortOrder: String?
     ): Cursor? {
         val cursor = MatrixCursor(arrayOf("result"))
-        
+
         try {
             val result = when (uriMatcher.match(uri)) {
                 A11Y_TREE -> getAccessibilityTree()
@@ -67,16 +73,19 @@ class DroidrunContentProvider : ContentProvider() {
                 PING -> createSuccessResponse("pong")
                 STATE -> getCombinedState()
                 PACKAGES -> getInstalledPackagesJson()
+                SCREENSHOT -> getScreenshot()
+                SCREENSHOT_PERMISSION_STATUS -> getScreenshotPermissionStatus()
+                SCREENSHOT_LAUNCH_DIALOG -> launchScreenshotPermissionDialog()
                 else -> createErrorResponse("Unknown endpoint: ${uri.path}")
             }
-            
+
             cursor.addRow(arrayOf(result))
-            
+
         } catch (e: Exception) {
             Log.e(TAG, "Query execution failed", e)
             cursor.addRow(arrayOf(createErrorResponse("Execution failed: ${e.message}")))
         }
-        
+
         return cursor
     }
 
@@ -122,14 +131,14 @@ class DroidrunContentProvider : ContentProvider() {
         }
 
         try {
-            val offset = values.getAsInteger("offset") 
+            val offset = values.getAsInteger("offset")
                 ?: return "content://$AUTHORITY/result?status=error&message=No offset provided".toUri()
 
             val accessibilityService = DroidrunAccessibilityService.getInstance()
                 ?: return "content://$AUTHORITY/result?status=error&message=Accessibility service not available".toUri()
 
             val success = accessibilityService.setOverlayOffset(offset)
-            
+
             return if (success) {
                 "content://$AUTHORITY/result?status=success&message=${Uri.encode("Overlay offset updated to $offset")}".toUri()
             } else {
@@ -206,22 +215,22 @@ class DroidrunContentProvider : ContentProvider() {
     private fun getCombinedState(): String {
         val accessibilityService = DroidrunAccessibilityService.getInstance()
             ?: return createErrorResponse("Accessibility service not available")
-        
+
         return try {
             // Get accessibility tree
             val treeJson = accessibilityService.getVisibleElements().map { element ->
                 buildElementNodeJson(element)
             }
-            
+
             // Get phone state
             val phoneStateJson = buildPhoneStateJson(accessibilityService.getPhoneState())
-            
+
             // Combine both in a single response
             val combinedState = JSONObject().apply {
                 put("a11y_tree", org.json.JSONArray(treeJson))
                 put("phone_state", phoneStateJson)
             }
-            
+
             createSuccessResponse(combinedState.toString())
         } catch (e: Exception) {
             Log.e(TAG, "Failed to get combined state", e)
@@ -266,7 +275,7 @@ class DroidrunContentProvider : ContentProvider() {
     //         }
     //         val result = focusedNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, arguments)
     //         focusedNode.recycle()
-            
+
     //         if (result) {
     //             val mode = if (append) "appended" else "set"
     //             "success: Text $mode - '$text'"
@@ -282,7 +291,7 @@ class DroidrunContentProvider : ContentProvider() {
     private fun performKeyboardInputBase64(values: ContentValues): String {
         val base64Text = values.getAsString("base64_text") ?: return "error: no text provided"
         val clear = values.getAsBoolean("clear") ?: true
-    
+
         return if (DroidrunKeyboardIME.getInstance() != null) {
             val ok = DroidrunKeyboardIME.getInstance()!!.inputB64Text(base64Text, clear)
             if (ok) "success: input done (clear=$clear)" else "error: input failed"
@@ -290,7 +299,7 @@ class DroidrunContentProvider : ContentProvider() {
             "error: IME not active"
         }
     }
-    
+
 
     private fun performKeyboardClear(): String {
         val keyboardIME = DroidrunKeyboardIME.getInstance()
@@ -325,15 +334,15 @@ class DroidrunContentProvider : ContentProvider() {
         }
     }
 
-    
+
     private fun getInstalledPackagesJson(): String {
         val pm = context?.packageManager ?: return createErrorResponse("PackageManager unavailable")
-    
+
         return try {
             val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
                 addCategory(Intent.CATEGORY_LAUNCHER)
             }
-            
+
             val resolvedApps: List<ResolveInfo> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 pm.queryIntentActivities(mainIntent, PackageManager.ResolveInfoFlags.of(0L))
             } else {
@@ -347,7 +356,7 @@ class DroidrunContentProvider : ContentProvider() {
                 val pkgInfo = try {
                     pm.getPackageInfo(resolveInfo.activityInfo.packageName, 0)
                 } catch (e: PackageManager.NameNotFoundException) {
-                    continue 
+                    continue
                 }
 
                 val appInfo = resolveInfo.activityInfo.applicationInfo
@@ -370,14 +379,14 @@ class DroidrunContentProvider : ContentProvider() {
 
                 arr.put(obj)
             }
-    
+
             val root = JSONObject()
             root.put("status", "success")
             root.put("count", arr.length())
             root.put("packages", arr)
-    
+
             root.toString()
-    
+
         } catch (e: Exception) {
             Log.e(TAG, "Failed to enumerate launchable apps", e)
             createErrorResponse("Failed to enumerate launchable apps: ${e.message}")
@@ -396,6 +405,95 @@ class DroidrunContentProvider : ContentProvider() {
             put("status", "error")
             put("error", error)
         }.toString()
+    }
+
+    private fun getScreenshot(): String {
+        return try {
+            val accessibilityService = DroidrunAccessibilityService.getInstance()
+                ?: return createErrorResponse("Accessibility service not available")
+
+            Log.d(TAG, "Taking screenshot via ContentProvider...")
+            val screenshotFuture = accessibilityService.takeScreenshotBase64(hideOverlay = true)
+
+            // Wait for screenshot with timeout (10 seconds)
+            val screenshotBase64 = screenshotFuture.get(10, java.util.concurrent.TimeUnit.SECONDS)
+
+            if (screenshotBase64.startsWith("error:")) {
+                Log.e(TAG, "Screenshot failed: $screenshotBase64")
+                createErrorResponse(screenshotBase64.substring(7)) // Remove "error:" prefix
+            } else {
+                Log.d(TAG, "Screenshot captured successfully, base64 length: ${screenshotBase64.length}")
+                createSuccessResponse(screenshotBase64)
+            }
+        } catch (e: java.util.concurrent.TimeoutException) {
+            Log.e(TAG, "Screenshot timeout", e)
+            createErrorResponse("Screenshot timeout - operation took too long")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get screenshot", e)
+            createErrorResponse("Failed to get screenshot: ${e.message}")
+        }
+    }
+
+    private fun getScreenshotPermissionStatus(): String {
+        return try {
+            val androidVersion = Build.VERSION.SDK_INT
+            val versionName = Build.VERSION.RELEASE
+
+            val status = if (androidVersion >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                // Android 14+
+                JSONObject().apply {
+                    put("hasPermission", true)
+                    put("method", "Accessibility Screenshot API")
+                    put("androidVersion", versionName)
+                    put("sdkInt", androidVersion)
+                    put("message", "Android 14+ - using native Accessibility Screenshot API (bypasses FLAG_SECURE)")
+                }
+            } else {
+                // Android 10-13
+                val hasPermission = ScreenshotService.hasMediaProjectionPermission()
+                JSONObject().apply {
+                    put("hasPermission", hasPermission)
+                    put("method", "MediaProjection API")
+                    put("androidVersion", versionName)
+                    put("sdkInt", androidVersion)
+                    if (hasPermission) {
+                        put("message", "MediaProjection permission granted - can bypass FLAG_SECURE")
+                    } else {
+                        put("message", "MediaProjection permission not granted")
+                        put("action", "Call /screenshot/launch_permission_dialog to grant permission")
+                    }
+                }
+            }
+
+            createSuccessResponse(status.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get screenshot permission status", e)
+            createErrorResponse("Failed to get screenshot permission status: ${e.message}")
+        }
+    }
+
+    private fun launchScreenshotPermissionDialog(): String {
+        return try {
+            Log.d(TAG, "Launch permission dialog requested via ContentProvider")
+
+            // Check Android version
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                return createSuccessResponse("Android 14+ detected - no additional permission needed. Screenshot API available directly.")
+            }
+
+            val accessibilityService = DroidrunAccessibilityService.getInstance()
+                ?: return createErrorResponse("Accessibility service not available")
+
+            // Launch the permission activity that shows the MediaProjection dialog
+            val intent = android.content.Intent(accessibilityService, ScreenshotPermissionActivity::class.java)
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            accessibilityService.startActivity(intent)
+
+            createSuccessResponse("MediaProjection permission dialog launched. Please grant permission to enable screenshot.")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to launch permission dialog", e)
+            createErrorResponse("Failed to launch permission dialog: ${e.message}")
+        }
     }
 
     override fun delete(uri: Uri, selection: String?, selectionArgs: Array<String>?): Int = 0
