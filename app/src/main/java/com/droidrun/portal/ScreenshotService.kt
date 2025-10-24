@@ -282,7 +282,7 @@ class ScreenshotService : Service() {
         val rowPadding = rowStride - pixelStride * width
 
         // Create bitmap with ARGB_8888 and explicit sRGB color space
-        val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        val tempBitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Android 8.0+ - explicitly set sRGB color space
             Bitmap.createBitmap(
                 width + rowPadding / pixelStride,
@@ -301,16 +301,70 @@ class ScreenshotService : Service() {
         }
 
         // Copy pixel data
-        bitmap.copyPixelsFromBuffer(buffer)
+        tempBitmap.copyPixelsFromBuffer(buffer)
 
-        return if (rowPadding == 0) {
-            bitmap
+        // Crop if there's padding
+        val bitmap = if (rowPadding == 0) {
+            tempBitmap
         } else {
-            // Crop the bitmap if there's padding
-            val croppedBitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height)
-            bitmap.recycle()
+            val croppedBitmap = Bitmap.createBitmap(tempBitmap, 0, 0, width, height)
+            tempBitmap.recycle()
             croppedBitmap
         }
+
+        // Check if we need to expand limited range (16-235) to full range (0-255)
+        // This fixes the issue where G and B only reach 246 instead of 255
+        return expandToFullRange(bitmap)
+    }
+
+    private fun expandToFullRange(bitmap: Bitmap): Bitmap {
+        // Create a mutable copy
+        val mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true)
+
+        val width = mutableBitmap.width
+        val height = mutableBitmap.height
+        val pixels = IntArray(width * height)
+
+        // Get all pixels
+        mutableBitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+        // Expand from limited range (16-235) to full range (0-255)
+        for (i in pixels.indices) {
+            val pixel = pixels[i]
+
+            val a = (pixel shr 24) and 0xFF  // Alpha: keep as is
+            var r = (pixel shr 16) and 0xFF
+            var g = (pixel shr 8) and 0xFF
+            var b = pixel and 0xFF
+
+            // Expand limited range to full range: (value - 16) * 255 / (235 - 16)
+            // Only if it looks like limited range (check if max values are around 235)
+            r = expandChannel(r)
+            g = expandChannel(g)
+            b = expandChannel(b)
+
+            pixels[i] = (a shl 24) or (r shl 16) or (g shl 8) or b
+        }
+
+        // Set the expanded pixels back
+        mutableBitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+
+        // Recycle the original if it's different
+        if (bitmap != mutableBitmap) {
+            bitmap.recycle()
+        }
+
+        return mutableBitmap
+    }
+
+    private fun expandChannel(value: Int): Int {
+        // Expand limited range (16-235) to full range (0-255)
+        // Formula: (value - 16) * 255 / 219
+        if (value < 16) return 0
+        if (value > 235) return 255
+
+        val expanded = ((value - 16) * 255) / 219
+        return expanded.coerceIn(0, 255)
     }
 
     private fun bitmapToBase64(bitmap: Bitmap): String {
