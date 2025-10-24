@@ -38,7 +38,31 @@ class ScreenshotService : Service() {
         }
 
         fun hasMediaProjectionPermission(): Boolean {
-            return resultData != null && resultCode != 0
+            // Check if we have permission from dialog
+            if (resultData != null && resultCode != 0) {
+                return true
+            }
+
+            // Also check if permission was granted via appops
+            return checkAppOpsPermission()
+        }
+
+        private fun checkAppOpsPermission(): Boolean {
+            return try {
+                val process = Runtime.getRuntime().exec("appops get ${instance?.packageName} PROJECT_MEDIA")
+                val reader = java.io.BufferedReader(java.io.InputStreamReader(process.inputStream))
+                val output = reader.readText()
+                reader.close()
+                process.waitFor()
+
+                // Check if output contains "allow"
+                val hasPermission = output.contains("allow", ignoreCase = true)
+                Log.d(TAG, "appops check result: $output, hasPermission: $hasPermission")
+                hasPermission
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking appops permission", e)
+                false
+            }
         }
     }
 
@@ -70,7 +94,18 @@ class ScreenshotService : Service() {
         try {
             // Initialize MediaProjection if not already done
             if (mediaProjection == null) {
-                mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData!!)
+                // If we have resultData from dialog, use it
+                if (resultData != null && resultCode != 0) {
+                    mediaProjection = mediaProjectionManager.getMediaProjection(resultCode, resultData!!)
+                } else {
+                    // Permission granted via appops - create MediaProjection without user consent
+                    // This requires calling the permission dialog at least once to get the token
+                    // For appops-only permission, we need to use a workaround
+                    Log.w(TAG, "Permission granted via appops but no MediaProjection token available")
+                    future.complete("error: MediaProjection requires initial permission dialog. Please call /screenshot/launch_permission_dialog once to initialize, then you can use appops for subsequent sessions.")
+                    return future
+                }
+
                 if (mediaProjection == null) {
                     future.complete("error: Failed to create MediaProjection")
                     return future
